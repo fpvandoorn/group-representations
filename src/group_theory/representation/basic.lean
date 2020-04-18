@@ -2,8 +2,8 @@
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: ...
 -/
-import linear_algebra.basic
-/- we will probably need to import other files soon too, like `linear_algebra.finite_dimensional`. -/
+import linear_algebra.basic linear_algebra.finite_dimensional
+import algebra.module
 
 universe variables u v w w'
 
@@ -30,6 +30,30 @@ protected structure equiv (ρ : group_representation G R M) (π : group_represen
   Type (max w w') :=
   (α : M ≃ₗ[R] M')
   (commute : ∀(g : G), α ∘ ρ g = π g ∘ α)
+
+structure subrepresentation (ρ : group_representation G R M) (π : group_representation G R M') :
+  Type (max w w') :=
+  (α : M →ₗ[R] M')
+  (commute : ∀(g : G), α ∘ ρ g = π g ∘ α)
+
+def invariant_subspace (ρ : group_representation G R M) (N : submodule R M) : Prop := 
+  ∀ x : N, ∀ g : G, ρ g x ∈ N 
+
+/-- this requires the cokernel of α 
+lemma subrep_is_invariant (ρ : group_representation G R M) (π : group_representation G R M') :
+  Π s : subrepresentation ρ π, invariant_subspace ρ (s.α M) := 
+-/
+
+def irreducible (ρ : group_representation G R M) → Prop := 
+  ∀ N : submodule R M, invariant_subspace ρ N → M = N -- do we also need the zero dim case?
+
+-- presumably this exists somewhere ?
+def complementary [module R M] (N N' : submodule R M) : Prop := sorry
+
+/-- Maschke's theorem -/
+
+theorem maschke (ρ : group_representation G R M) : ∀ N : submodule R M, 
+  invariant_subspace ρ N → ∃ N', invariant_subspace ρ N' ∧ complementary N N' := sorry
 
 end group_representation
 

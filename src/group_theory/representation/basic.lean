@@ -24,19 +24,42 @@ namespace group_representation
 
 /- module facts -/
 
-def complementary [module R M] (N N' : submodule R M) : Prop := 
-  ∀ x : M, ∃! (n : N), ∃! (n' : N'), x = n + n' 
+def complementary (N N' : submodule R M) : Prop := 
+  ∀ x : M, ∃! (n : N × N'), x = n.1 + n.2 
 
 def is_projection (π: M →ₗ[R] M) : Prop := π ∘ π = π 
 
+example  (N N' : submodule R M) : complementary N N' → submodule.span R ((N : set M) ∪ N') = ⊤ := 
+begin intro,  unfold complementary at a, simp [submodule.eq_top_iff'], intro x, 
+  cases a x, cases w, simp at h, rw h.1, 
+  refine submodule.add_mem _ _ _, apply submodule.subset_span, left, exact w_fst.2, 
+  apply submodule.subset_span, right, exact w_snd.2, 
+end
+
+example {N N' : submodule R M} (h : complementary N N') : submodule.span R ((N : set M) ∪ N') = ⊤ := 
+begin rw submodule.eq_top_iff', intro x, rcases h x with ⟨⟨y, z⟩, ⟨h2, h3⟩⟩, rw h2, 
+refine submodule.add_mem _ _ _; 
+apply submodule.subset_span, { left, exact y.2 }, { right, exact z.2 } 
+end 
+
 example (π : M →ₗ[R] M) : is_projection π → complementary (ker π) (range π) := 
-begin unfold is_projection, intro, unfold ker, unfold range, --unfold complementary, 
+begin unfold is_projection, intro, unfold ker, unfold range, unfold complementary, sorry
 end
 
 def projector_on_submodule [module R M] (N : submodule R M) : M →ₗ[R] M := sorry 
 
 def is_orthogonal_complement (B : bilin_form R M) (N N' : submodule R M) : Prop :=
   complementary N N' ∧ ∀ x : N, ∀ y : N', bilin_form.is_ortho B x y 
+
+def orthogonal_complement (B : bilin_form R M) (N : submodule R M) : submodule R M := 
+  { carrier := {x:M|∀ y ∈ N, bilin_form.is_ortho B x y}, 
+  zero := λ y hy, bilin_form.ortho_zero y, 
+  add := λ x y hx hy z hz, begin unfold bilin_form.is_ortho at *, simp [bilin_form.add_left], simp [hx z hz, hy z hz], 
+  end,
+  smul := λ r x hx y hy, by { unfold bilin_form.is_ortho at *, rw [bilin_form.smul_left, hx y hy, mul_zero] } } 
+
+lemma orthogonal_complement_is_orthogonal
+  (B : bilin_form R M) (N : submodule R M) : is_orthogonal_complement B N (orthogonal_complement B N) := sorry
 
 /- end module facts -/
 
@@ -75,15 +98,21 @@ def irreducible (ρ : group_representation G R M) : Prop :=
 
 /-- Maschke's theorem -/
 
-lemma standard_orthogonal_complement_is_invariant (ρ : group_representation G R M) (B : bilin_form R M) : 
+lemma standard_orthogonal_complement_is_invariant {ρ : group_representation G R M} (B : bilin_form R M) : 
   ∀ N N' : submodule R M, invariant_subspace ρ N → is_orthogonal_complement B N N' → invariant_subspace ρ N' := sorry
 
 theorem maschke (ρ : group_representation G R M) (B : bilin_form R M) : ∀ N : submodule R M,
   invariant_subspace ρ N → ∃ N', invariant_subspace ρ N' ∧ complementary N N' := 
-begin intros, have h := standard_orthogonal_complement_is_invariant ρ B , 
-
+begin intros, let N' := orthogonal_complement B N, use N', 
+have h1 := (orthogonal_complement_is_orthogonal _ _), 
+have h := standard_orthogonal_complement_is_invariant B N N' a h1,
+apply and.intro, exact h, sorry, 
 end
 
+
+end group_representation
+
+/--
 def Mmap := M →ₗ[R] M 
 
 def invariant_projector (ρ : group_representation G R M) (B : bilin_form R M) : Mmap → Mmap := λ X, X 
@@ -94,8 +123,7 @@ theorem maschke2 (ρ : group_representation G R M) (B : bilin_form R M) : ∀ N 
 begin intros, 
   use invariant_projector ρ B projector_on_submodule N, 
 end
-
-end group_representation
+-/
 
 /- from [https://github.com/Shenyang1995/M4R/blob/66f1450f206dc05c3093bc4eaa1361309bf8633b/src/G_module/basic.lean#L10-L14].
   Do we want to use this definition instead? This might allow us to write `g • x` instead of `ρ g x` -/

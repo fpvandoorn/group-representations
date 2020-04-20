@@ -36,23 +36,23 @@ structure subrepresentation (ρ : group_representation G R M) (π : group_repres
   (α : M →ₗ[R] M')
   (commute : ∀(g : G), α ∘ ρ g = π g ∘ α)
 
-def invariant_subspace (ρ : group_representation G R M) (N : submodule R M) : Prop := 
-  ∀ x : N, ∀ g : G, ρ g x ∈ N 
+def invariant_subspace (ρ : group_representation G R M) (N : submodule R M) : Prop :=
+  ∀ x : N, ∀ g : G, ρ g x ∈ N
 
-/-- this requires the cokernel of α 
+/- this requires the cokernel of α
 lemma subrep_is_invariant (ρ : group_representation G R M) (π : group_representation G R M') :
-  Π s : subrepresentation ρ π, invariant_subspace ρ (s.α M) := 
+  Π s : subrepresentation ρ π, invariant_subspace ρ (s.α M) :=
 -/
 
-def irreducible (ρ : group_representation G R M) → Prop := 
-  ∀ N : submodule R M, invariant_subspace ρ N → M = N -- do we also need the zero dim case?
+def irreducible (ρ : group_representation G R M) : Prop :=
+  ∀ N : submodule R M, invariant_subspace ρ N → N = ⊥ ∨ N = ⊤
 
 -- presumably this exists somewhere ?
 def complementary [module R M] (N N' : submodule R M) : Prop := sorry
 
 /-- Maschke's theorem -/
 
-theorem maschke (ρ : group_representation G R M) : ∀ N : submodule R M, 
+theorem maschke (ρ : group_representation G R M) : ∀ N : submodule R M,
   invariant_subspace ρ N → ∃ N', invariant_subspace ρ N' ∧ complementary N N' := sorry
 
 end group_representation

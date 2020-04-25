@@ -3,11 +3,60 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: ...
 -/
 import linear_algebra.basic linear_algebra.finite_dimensional linear_algebra.bilinear_form
-import algebra.module logic.unique
+import algebra.module logic.unique data.fintype.card
+
+/- copied from a more recent bilinear_form.lean -/
+
+
+namespace bilin_form
+
+universes u v w
+
+variables {R : Type u} {M : Type v} [ring R] [add_comm_group M] [module R M] {B : bilin_form R M}
+
+section comp 
+
+variables {N : Type w} [add_comm_group N] [module R N]
+
+/-- Apply a linear map on the left and right argument of a bilinear form. -/
+def comp (B : bilin_form R N) (l r : M →ₗ[R] N) : bilin_form R M :=
+{ bilin := λ x y, B (l x) (r y),
+  bilin_add_left := λ x y z, by simp [add_left],
+  bilin_smul_left := λ x y z, by simp [smul_left],
+  bilin_add_right := λ x y z, by simp [add_right],
+  bilin_smul_right := λ x y z, by simp [smul_right] }
+
+/-- Apply a linear map to the left argument of a bilinear form. -/
+def comp_left (B : bilin_form R M) (f : M →ₗ[R] M) : bilin_form R M :=
+B.comp f linear_map.id
+
+/-- Apply a linear map to the right argument of a bilinear form. -/
+def comp_right (B : bilin_form R M) (f : M →ₗ[R] M) : bilin_form R M :=
+B.comp linear_map.id f
+
+@[simp] lemma comp_left_comp_right (B : bilin_form R M) (l r : M →ₗ[R] M) :
+  (B.comp_left l).comp_right r = B.comp l r := rfl
+
+@[simp] lemma comp_right_comp_left (B : bilin_form R M) (l r : M →ₗ[R] M) :
+  (B.comp_right r).comp_left l = B.comp l r := rfl
+
+@[simp] lemma comp_apply (B : bilin_form R N) (l r : M →ₗ[R] N) (v w) :
+  B.comp l r v w = B (l v) (r w) := rfl
+
+@[simp] lemma comp_left_apply (B : bilin_form R M) (f : M →ₗ[R] M) (v w) :
+  B.comp_left f v w = B (f v) w := rfl
+
+@[simp] lemma comp_right_apply (B : bilin_form R M) (f : M →ₗ[R] M) (v w) :
+  B.comp_right f v w = B v (f w) := rfl
+
+end comp
+
+end bilin_form 
 
 universe variables u v w w'
 
 open linear_map
+
 
 /-- A representation of a group `G` on an `R`-module `M` is a group homomorphism from `G` to
   `GL(M)`. Normally `M` is a vector space, but we don't need that for the definition. -/
@@ -16,7 +65,7 @@ def group_representation (G R M : Type*) [group G] [ring R] [add_comm_group M] [
 G →* general_linear_group R M
 
 variables {G : Type u} {R : Type v} {M : Type w} {M' : Type w'}
-  [group G] [ring R] [add_comm_group M] [module R M] [add_comm_group M'] [module R M']
+  [group G] [comm_ring R] [add_comm_group M] [module R M] [add_comm_group M'] [module R M']
 
 instance : has_coe_to_fun (group_representation G R M) := ⟨_, λ f, f.to_fun⟩
 
@@ -42,14 +91,23 @@ refine submodule.add_mem _ _ _;
 apply submodule.subset_span, { left, exact y.2 }, { right, exact z.2 } 
 end 
 
+lemma complementary_zero_inter {N N' : submodule R M} (h : complementary N N') : submodule.span R ((N : set M) ∩ N') = ⊥ := 
+begin rw submodule.span_eq_bot, intro, unfold complementary at h, intro, simp at H, cases h x, have h1 := h_1.1,
+ sorry
+end
+
 example (π : M →ₗ[R] M) : is_projection π → complementary (ker π) (range π) := 
-begin unfold is_projection, intro, unfold ker, unfold range, unfold complementary, sorry
+begin unfold is_projection, intro, unfold complementary, intro x, unfold exists_unique, -- rw ker, rw range, 
+sorry
 end
 
 def projector_on_submodule [module R M] (N : submodule R M) : M →ₗ[R] M := sorry 
 
-def is_orthogonal_complement (B : bilin_form R M) (N N' : submodule R M) : Prop :=
-  complementary N N' ∧ ∀ x : N, ∀ y : N', bilin_form.is_ortho B x y 
+def nondegenerate (B : bilin_form R M) : Prop := 
+  ∀ x : M, ∃ y : M, 0 ≠ B x y
+
+def is_orthogonal (B : bilin_form R M) (N N' : submodule R M) : Prop :=
+  ∀ x : N, ∀ y : N', bilin_form.is_ortho B x y 
 
 def orthogonal_complement (B : bilin_form R M) (N : submodule R M) : submodule R M := 
   { carrier := {x:M|∀ y ∈ N, bilin_form.is_ortho B x y}, 
@@ -59,9 +117,12 @@ def orthogonal_complement (B : bilin_form R M) (N : submodule R M) : submodule R
   smul := λ r x hx y hy, by { unfold bilin_form.is_ortho at *, rw [bilin_form.smul_left, hx y hy, mul_zero] } } 
 
 lemma orthogonal_complement_is_orthogonal
-  (B : bilin_form R M) (N : submodule R M) : is_orthogonal_complement B N (orthogonal_complement B N) := sorry
+  (B : bilin_form R M) (N : submodule R M) : is_orthogonal B N (orthogonal_complement B N) :=
+  begin unfold is_orthogonal, intros, sorry
+   end 
 
 /- end module facts -/
+
 
 /- do we want this instance? Then we don't have to write `(ρ g).1 x` instead of `ρ g x`. -/
 instance : has_coe (general_linear_group R M) (M →ₗ[R] M) := ⟨λ x, x.1⟩
@@ -71,21 +132,41 @@ protected structure equiv (ρ : group_representation G R M) (π : group_represen
   (α : M ≃ₗ[R] M')
   (commute : ∀(g : G), α ∘ ρ g = π g ∘ α)
 
-structure subrepresentation (ρ : group_representation G R M) (π : group_representation G R M') :
-  Type (max w w') :=
-  (α : M →ₗ[R] M')
-  (commute : ∀(g : G), α ∘ ρ g = π g ∘ α)
+--structure subrepresentation (ρ : group_representation G R M) (π : group_representation G R M') :
+--  Type (max w w') := 
+  --(α : M →ₗ[R] M')
+  --(commute : ∀(g : G), α ∘ ρ g = π g ∘ α)
+  --left_inv := λ m, show (f.inv * f.val) m = m
+
+def sum_over_G1 {s : finset G}  : nat := s.sum 0 
+#print sum_over_G1
+
+def sum_over_G {s : finset G} (ρ : group_representation G R M) : M →ₗ[R] M := 
+  s.sum (λ g:G, general_linear_group.to_linear_equiv (ρ g) )
+#print sum_over_G
+
 
 def invariant_subspace (ρ : group_representation G R M) (N : submodule R M) : Prop :=
   ∀ x : N, ∀ g : G, ρ g x ∈ N
 
 variables B : bilin_form R M 
 
-def standard_invariant_bilinear_form (ρ : group_representation G R M) (B : bilin_form R M): bilin_form R M := B 
-  -- linear_map.to_bilin  λ (x y : M), sum over g in  G, B (ρ g x) (ρ g y)
-  -- also divide by |G|
+def conjugated_bilinear_form (ρ : group_representation G R M) (B : bilin_form R M) (g : G): bilin_form R M := 
+ B.comp (ρ g) (ρ g)
+
+def is_invariant (ρ : group_representation G R M) (B : bilin_form R M) : Prop := 
+  ∀ g : G, B = B.comp (ρ g) (ρ g)
+
+def standard_invariant_bilinear_form {s : finset G} (ρ : group_representation G R M) (B : bilin_form R M) : bilin_form R M :=
+  (s.sum (λ g:G, B.comp (ρ g) (ρ g))) 
+-- (1/ (rat.of_int s.card)) * (s.sum (λ g:G, B.comp (ρ g) (ρ g))) 
 
 #print standard_invariant_bilinear_form
+
+example (ρ : group_representation G R M) (B : bilin_form R M) : is_invariant ρ (standard_invariant_bilinear_form ρ B) :=
+begin unfold standard_invariant_bilinear_form, unfold is_invariant, unfold bilin_form.comp, intro, sorry 
+--apply finset.sum, 
+end
 
 /- this requires the cokernel of α
 lemma subrep_is_invariant (ρ : group_representation G R M) (π : group_representation G R M') :
@@ -98,8 +179,8 @@ def irreducible (ρ : group_representation G R M) : Prop :=
 
 /-- Maschke's theorem -/
 
-lemma standard_orthogonal_complement_is_invariant {ρ : group_representation G R M} (B : bilin_form R M) : 
-  ∀ N N' : submodule R M, invariant_subspace ρ N → is_orthogonal_complement B N N' → invariant_subspace ρ N' := sorry
+lemma standard_orthogonal_complement_is_invariant {ρ : group_representation G R M} (B : bilin_form R M): 
+  ∀ N N' : submodule R M, invariant_subspace ρ N → is_orthogonal B N N' → invariant_subspace ρ N' := sorry
 
 theorem maschke (ρ : group_representation G R M) (B : bilin_form R M) : ∀ N : submodule R M,
   invariant_subspace ρ N → ∃ N', invariant_subspace ρ N' ∧ complementary N N' := 

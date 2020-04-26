@@ -4,6 +4,7 @@ Authors: ...
 -/
 import linear_algebra.basic linear_algebra.finite_dimensional linear_algebra.bilinear_form
 import algebra.module logic.unique data.fintype.card
+import tactic.apply_fun
 
 /- copied from a more recent bilinear_form.lean -/
 
@@ -73,10 +74,22 @@ namespace group_representation
 
 /- module facts -/
 
+open submodule
+
 def complementary (N N' : submodule R M) : Prop := 
   ∀ x : M, ∃! (n : N × N'), x = n.1 + n.2 
+  
+def complementary2 (N N' : submodule R M) : Prop := 
+  submodule.span R ((N : set M) ∪ N') = ⊤ ∧ submodule.span R ((N : set M) ∩ N') = ⊥ 
 
-def is_projection (π: M →ₗ[R] M) : Prop := π ∘ π = π 
+def is_projection (π: M →ₗ[R] M) : Prop := linear_map.comp π π = π 
+
+example (π : M →ₗ[R] M) : is_projection π → complementary2 (ker π) (range π) := 
+begin unfold is_projection, unfold complementary2, intro, rw submodule.span_union, rw submodule.span_eq_bot,  simp, split, 
+rw eq_top_iff', intro, rw mem_sup, simp, use (linear_map.id-π) x, split, simp, rw← comp_apply, rw a, simp, 
+use π x, simp, use x, intros, have a_3 := a_2, 
+apply_fun π at a_2, rw← comp_apply at a_2, rw a at a_2, rw a_1 at a_2, cc, 
+end
 
 example  (N N' : submodule R M) : complementary N N' → submodule.span R ((N : set M) ∪ N') = ⊤ := 
 begin intro,  unfold complementary at a, simp [submodule.eq_top_iff'], intro x, 
@@ -93,6 +106,7 @@ end
 
 lemma complementary_zero_inter {N N' : submodule R M} (h : complementary N N') : submodule.span R ((N : set M) ∩ N') = ⊥ := 
 begin rw submodule.span_eq_bot, intro, unfold complementary at h, intro, simp at H, cases h x, have h1 := h_1.1,
+ have h2 := h_1.2, simp at h2, 
  sorry
 end
 

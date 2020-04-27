@@ -20,7 +20,7 @@ section comp
 variables {N : Type w} [add_comm_group N] [module R N]
 
 /-- Apply a linear map on the left and right argument of a bilinear form. -/
-def comp (B : bilin_form R N) (l r : M →ₗ[R] N) : bilin_form R M :=
+@[simps] def comp (B : bilin_form R N) (l r : M →ₗ[R] N) : bilin_form R M :=
 { bilin := λ x y, B (l x) (r y),
   bilin_add_left := λ x y z, by simp [add_left],
   bilin_smul_left := λ x y z, by simp [smul_left],
@@ -76,43 +76,19 @@ namespace group_representation
 
 open submodule
 
-def complementary (N N' : submodule R M) : Prop := 
-  ∀ x : M, ∃! (n : N × N'), x = n.1 + n.2 
-  
-def complementary2 (N N' : submodule R M) : Prop := 
-  submodule.span R ((N : set M) ∪ N') = ⊤ ∧ submodule.span R ((N : set M) ∩ N') = ⊥ 
+def complementary (N N' : submodule R M) : Prop := N ⊔ N' = ⊤ ∧ N ⊓ N' = ⊥ 
 
-def is_projection (π: M →ₗ[R] M) : Prop := linear_map.comp π π = π 
+def is_projection (π: M →ₗ[R] M) : Prop := ∀ x, π (π x) = π x 
 
-example (π : M →ₗ[R] M) : is_projection π → complementary2 (ker π) (range π) := 
-begin unfold is_projection, unfold complementary2, intro, rw submodule.span_union, rw submodule.span_eq_bot,  simp, split, 
-rw eq_top_iff', intro, rw mem_sup, simp, use (linear_map.id-π) x, split, simp, rw← comp_apply, rw a, simp, 
-use π x, simp, use x, intros, have a_3 := a_2, 
-apply_fun π at a_2, rw← comp_apply at a_2, rw a at a_2, rw a_1 at a_2, cc, 
-end
-
-example  (N N' : submodule R M) : complementary N N' → submodule.span R ((N : set M) ∪ N') = ⊤ := 
-begin intro,  unfold complementary at a, simp [submodule.eq_top_iff'], intro x, 
-  cases a x, cases w, simp at h, rw h.1, 
-  refine submodule.add_mem _ _ _, apply submodule.subset_span, left, exact w_fst.2, 
-  apply submodule.subset_span, right, exact w_snd.2, 
-end
-
-example {N N' : submodule R M} (h : complementary N N') : submodule.span R ((N : set M) ∪ N') = ⊤ := 
-begin rw submodule.eq_top_iff', intro x, rcases h x with ⟨⟨y, z⟩, ⟨h2, h3⟩⟩, rw h2, 
-refine submodule.add_mem _ _ _; 
-apply submodule.subset_span, { left, exact y.2 }, { right, exact z.2 } 
-end 
-
-lemma complementary_zero_inter {N N' : submodule R M} (h : complementary N N') : submodule.span R ((N : set M) ∩ N') = ⊥ := 
-begin rw submodule.span_eq_bot, intro, unfold complementary at h, intro, simp at H, cases h x, have h1 := h_1.1,
- have h2 := h_1.2, simp at h2, 
- sorry
-end
+lemma eq_bot (N : submodule R M) : N = ⊥ ↔ ∀ x : M, x ∈ N → x=0 := 
+begin rw [lattice.eq_bot_iff], split, { intros h x hx, simpa using h hx }, { intros h x hx, simp [h x hx] } end
 
 example (π : M →ₗ[R] M) : is_projection π → complementary (ker π) (range π) := 
-begin unfold is_projection, intro, unfold complementary, intro x, unfold exists_unique, -- rw ker, rw range, 
-sorry
+begin unfold is_projection, intro hp, split, 
+  { rw eq_top_iff', intro, rw mem_sup, simp, use (linear_map.id-π) x, split, simp [hp],  
+  use π x, simp, use x },
+intros, rw eq_bot, simp, intros,  have a_2 := a_1, 
+apply_fun π at a_1, simp [hp] at a_1, rw a_2 at a_1, cc, 
 end
 
 def projector_on_submodule [module R M] (N : submodule R M) : M →ₗ[R] M := sorry 
@@ -152,6 +128,10 @@ protected structure equiv (ρ : group_representation G R M) (π : group_represen
   --(commute : ∀(g : G), α ∘ ρ g = π g ∘ α)
   --left_inv := λ m, show (f.inv * f.val) m = m
 
+section finite_groups
+
+variable [fintype G]
+
 def sum_over_G1 {s : finset G}  : nat := s.sum 0 
 #print sum_over_G1
 
@@ -171,14 +151,20 @@ def conjugated_bilinear_form (ρ : group_representation G R M) (B : bilin_form R
 def is_invariant (ρ : group_representation G R M) (B : bilin_form R M) : Prop := 
   ∀ g : G, B = B.comp (ρ g) (ρ g)
 
-def standard_invariant_bilinear_form {s : finset G} (ρ : group_representation G R M) (B : bilin_form R M) : bilin_form R M :=
-  (s.sum (λ g:G, B.comp (ρ g) (ρ g))) 
--- (1/ (rat.of_int s.card)) * (s.sum (λ g:G, B.comp (ρ g) (ρ g))) 
+def standard_invariant_bilinear_form [fintype G] (ρ : group_representation G R M) (B : bilin_form R M) : bilin_form R M :=
+  (finset.univ.sum (λ g:G, B.comp (ρ g) (ρ g))) 
 
-#print standard_invariant_bilinear_form
+variables g2 : G
+
+#check finset.sum_bij (λ g:G, λ _, g * g2⁻¹ ) 
+
+lemma sum_apply {α} (s : finset α) (f : α → bilin_form R M) (m m' : M) : s.sum f m m' = s.sum (λ x, f x m m') := sorry 
 
 example (ρ : group_representation G R M) (B : bilin_form R M) : is_invariant ρ (standard_invariant_bilinear_form ρ B) :=
-begin unfold standard_invariant_bilinear_form, unfold is_invariant, unfold bilin_form.comp, intro, sorry 
+begin unfold standard_invariant_bilinear_form, unfold is_invariant, intro, rename g g1, 
+ext, simp [sum_apply], symmetry, 
+  apply finset.sum_bij (λ g:G, λ _, g * g1 ), 
+-- unfold bilin_form.comp, intro, sorry 
 --apply finset.sum, 
 end
 
@@ -204,6 +190,7 @@ have h := standard_orthogonal_complement_is_invariant B N N' a h1,
 apply and.intro, exact h, sorry, 
 end
 
+end finite_groups
 
 end group_representation
 

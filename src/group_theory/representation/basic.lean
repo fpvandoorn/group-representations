@@ -6,58 +6,9 @@ import linear_algebra.basic linear_algebra.finite_dimensional linear_algebra.bil
 import algebra.module logic.unique data.fintype.card
 import tactic.apply_fun
 
-/- copied from a more recent bilinear_form.lean -/
-
-
-namespace bilin_form
-
-universes u v w
-
-variables {R : Type u} {M : Type v} [ring R] [add_comm_group M] [module R M] {B : bilin_form R M}
-
-section comp 
-
-variables {N : Type w} [add_comm_group N] [module R N]
-
-/-- Apply a linear map on the left and right argument of a bilinear form. -/
-@[simps] def comp (B : bilin_form R N) (l r : M →ₗ[R] N) : bilin_form R M :=
-{ bilin := λ x y, B (l x) (r y),
-  bilin_add_left := λ x y z, by simp [add_left],
-  bilin_smul_left := λ x y z, by simp [smul_left],
-  bilin_add_right := λ x y z, by simp [add_right],
-  bilin_smul_right := λ x y z, by simp [smul_right] }
-
-/-- Apply a linear map to the left argument of a bilinear form. -/
-def comp_left (B : bilin_form R M) (f : M →ₗ[R] M) : bilin_form R M :=
-B.comp f linear_map.id
-
-/-- Apply a linear map to the right argument of a bilinear form. -/
-def comp_right (B : bilin_form R M) (f : M →ₗ[R] M) : bilin_form R M :=
-B.comp linear_map.id f
-
-@[simp] lemma comp_left_comp_right (B : bilin_form R M) (l r : M →ₗ[R] M) :
-  (B.comp_left l).comp_right r = B.comp l r := rfl
-
-@[simp] lemma comp_right_comp_left (B : bilin_form R M) (l r : M →ₗ[R] M) :
-  (B.comp_right r).comp_left l = B.comp l r := rfl
-
-@[simp] lemma comp_apply (B : bilin_form R N) (l r : M →ₗ[R] N) (v w) :
-  B.comp l r v w = B (l v) (r w) := rfl
-
-@[simp] lemma comp_left_apply (B : bilin_form R M) (f : M →ₗ[R] M) (v w) :
-  B.comp_left f v w = B (f v) w := rfl
-
-@[simp] lemma comp_right_apply (B : bilin_form R M) (f : M →ₗ[R] M) (v w) :
-  B.comp_right f v w = B v (f w) := rfl
-
-end comp
-
-end bilin_form 
-
 universe variables u v w w'
 
 open linear_map
-
 
 /-- A representation of a group `G` on an `R`-module `M` is a group homomorphism from `G` to
   `GL(M)`. Normally `M` is a vector space, but we don't need that for the definition. -/
@@ -81,7 +32,7 @@ def complementary (N N' : submodule R M) : Prop := N ⊔ N' = ⊤ ∧ N ⊓ N' =
 def is_projection (π: M →ₗ[R] M) : Prop := ∀ x, π (π x) = π x 
 
 lemma eq_bot (N : submodule R M) : N = ⊥ ↔ ∀ x : M, x ∈ N → x=0 := 
-begin rw [lattice.eq_bot_iff], split, { intros h x hx, simpa using h hx }, { intros h x hx, simp [h x hx] } end
+begin rw [eq_bot_iff], split, { intros h x hx, simpa using h hx }, { intros h x hx, simp [h x hx] } end
 
 example (π : M →ₗ[R] M) : is_projection π → complementary (ker π) (range π) := 
 begin unfold is_projection, intro hp, split, 
@@ -163,9 +114,13 @@ lemma sum_apply {α} (s : finset α) (f : α → bilin_form R M) (m m' : M) : s.
 example (ρ : group_representation G R M) (B : bilin_form R M) : is_invariant ρ (standard_invariant_bilinear_form ρ B) :=
 begin unfold standard_invariant_bilinear_form, unfold is_invariant, intro, rename g g1, 
 ext, simp [sum_apply], symmetry, 
-  apply finset.sum_bij (λ g:G, λ _, g * g1 ), 
--- unfold bilin_form.comp, intro, sorry 
---apply finset.sum, 
+  apply finset.sum_bij (λ g:G, λ _, g * g1 ),
+  simp_intros, 
+  { intros, apply bilin_form.coe_fn_congr, 
+ -- let foo := ρ (a*g1) x, have bar := monoid_hom.map_mul ρ a g1, rw [bar] at foo, 
+  sorry, sorry }, 
+  { intros, simp at a, exact a },
+  intros, use b * g1⁻¹, simp
 end
 
 /- this requires the cokernel of α

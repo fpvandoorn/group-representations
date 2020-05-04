@@ -16,8 +16,9 @@ def group_representation (G R M : Type*) [group G] [ring R] [add_comm_group M] [
   Type* :=
 G →* general_linear_group R M
 
-variables {G : Type u} {R : Type v} {M : Type w} {M' : Type w'}
+variables {G : Type u} {R : Type v} {M : Type w} {M' : Type w'} 
   [group G] [comm_ring R] [add_comm_group M] [module R M] [add_comm_group M'] [module R M']
+
 
 instance : has_coe_to_fun (group_representation G R M) := ⟨_, λ f, f.to_fun⟩
 
@@ -51,11 +52,6 @@ lemma nondegenerate_bilinear_form_exists : ∃ B : bilin_form R M, nondegenerate
 def is_orthogonal (B : bilin_form R M) (N N' : submodule R M) : Prop :=
   ∀ x : N, ∀ y : N', bilin_form.is_ortho B x y 
 
-def orthogonal_imp_complementary {B : bilin_form R M} {N N' : submodule R M} :
-  is_orthogonal B N N' → complementary N N' :=
-begin unfold is_orthogonal, unfold complementary, intros, split, sorry
-end
-
 def orthogonal_complement (B : bilin_form R M) (N : submodule R M) : submodule R M := 
   { carrier := {x:M|∀ y ∈ N, bilin_form.is_ortho B x y}, 
   zero := λ y hy, bilin_form.ortho_zero y, 
@@ -67,11 +63,12 @@ def orthogonal_complement (B : bilin_form R M) (N : submodule R M) : submodule R
 def projector_on_submodule [module R M] {B : bilin_form R M} (N : submodule R M) {s : finset N} : M →ₗ[R] M := 
  sorry -- s.sum (λ x, B.to_linear_map x) 
 
---set_option pp.coercions true
+lemma orthogonal_complement_bijective_to_quotient := sorry
 
-lemma orthogonal_complement_is_orthogonal
-  (B : bilin_form R M) (N : submodule R M) : is_orthogonal B N (orthogonal_complement B N) :=
-  begin unfold is_orthogonal, intros, --unfold bilin_form.is_ortho, 
+lemma orthogonal_complement_is_complementary
+  (B : bilin_form R M) (N : submodule R M) : complementary N (orthogonal_complement B N) :=
+  begin unfold complementary, intros, split, 
+  { rw eq_top_iff', intro, rw mem_sup, simp, },
   unfold_coes at y, 
   sorry
    end 
@@ -92,6 +89,16 @@ protected structure equiv (ρ : group_representation G R M) (π : group_represen
   --(α : M →ₗ[R] M')
   --(commute : ∀(g : G), α ∘ ρ g = π g ∘ α)
   --left_inv := λ m, show (f.inv * f.val) m = m
+
+section field
+
+variables  {K : Type v} [field K] {V : Type w} [add_comm_group V] [vector_space K V] (H : finite_dimensional K V)
+
+def sum_over_basis (s : set V) (hs1 : is_basis K (subtype.val : s → V)) (hs2 : s.finite) (f : V → K) : K := 
+begin let sfin := hs2.to_finset, exact sfin.sum f, 
+end
+
+end field
 
 section finite_groups
 
@@ -142,9 +149,7 @@ begin unfold standard_invariant_bilinear_form, unfold is_invariant, intro, renam
 ext, simp [sum_apply], symmetry, 
   apply finset.sum_bij (λ g:G, λ _, g * g1 ),
   simp_intros, 
-  { intros, apply bilin_form.coe_fn_congr, 
- -- let foo := ρ (a*g1) x, have bar := monoid_hom.map_mul ρ a g1, rw [bar] at foo, 
-  sorry, sorry }, 
+  { intros, apply bilin_form.coe_fn_congr, repeat { dsimp, rw ρ.map_mul, refl, } }, 
   { intros, simp at a, exact a },
   intros, use b * g1⁻¹, simp
 end
@@ -156,8 +161,8 @@ def irreducible (ρ : group_representation G R M) : Prop :=
 /-- Maschke's theorem -/
 
 lemma orthogonal_complement_is_invariant {ρ : group_representation G R M} (B : bilin_form R M): 
-  ∀ N N' : submodule R M, is_invariant ρ B → invariant_subspace ρ N → is_orthogonal B N N' → invariant_subspace ρ N' :=
-begin  unfold is_invariant, unfold invariant_subspace, unfold is_orthogonal, intros, 
+  ∀ N N' : submodule R M, is_invariant ρ B → invariant_subspace ρ N → complementary N N' → invariant_subspace ρ N' :=
+begin  unfold is_invariant, unfold invariant_subspace, unfold complementary, intros, 
   sorry
 end
 

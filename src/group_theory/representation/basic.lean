@@ -42,13 +42,19 @@ intros, rw eq_bot, simp, intros,  have a_2 := a_1,
 apply_fun π at a_1, simp [hp] at a_1, rw a_2 at a_1, cc, 
 end
 
-def projector_on_submodule [module R M] (N : submodule R M) : M →ₗ[R] M := sorry 
-
 def nondegenerate (B : bilin_form R M) : Prop := 
-  ∀ x : M, ∃ y : M, 0 ≠ B x y
+  ∀ x : M, 0 ≠ x → ∃ y : M, 0 ≠ B x y
+
+lemma nondegenerate_bilinear_form_exists : ∃ B : bilin_form R M, nondegenerate B := sorry 
+/- sum over a noncanonical basis - does this require R to be a field ?  -/
 
 def is_orthogonal (B : bilin_form R M) (N N' : submodule R M) : Prop :=
   ∀ x : N, ∀ y : N', bilin_form.is_ortho B x y 
+
+def orthogonal_imp_complementary {B : bilin_form R M} {N N' : submodule R M} :
+  is_orthogonal B N N' → complementary N N' :=
+begin unfold is_orthogonal, unfold complementary, intros, split, sorry
+end
 
 def orthogonal_complement (B : bilin_form R M) (N : submodule R M) : submodule R M := 
   { carrier := {x:M|∀ y ∈ N, bilin_form.is_ortho B x y}, 
@@ -57,11 +63,19 @@ def orthogonal_complement (B : bilin_form R M) (N : submodule R M) : submodule R
   end,
   smul := λ r x hx y hy, by { unfold bilin_form.is_ortho at *, rw [bilin_form.smul_left, hx y hy, mul_zero] } } 
 
+/- this is trying to sum over a basis, which may need R to be a field? -/
+def projector_on_submodule [module R M] {B : bilin_form R M} (N : submodule R M) {s : finset N} : M →ₗ[R] M := 
+ sorry -- s.sum (λ x, B.to_linear_map x) 
+
+--set_option pp.coercions true
+
 lemma orthogonal_complement_is_orthogonal
   (B : bilin_form R M) (N : submodule R M) : is_orthogonal B N (orthogonal_complement B N) :=
-  begin unfold is_orthogonal, intros, sorry
+  begin unfold is_orthogonal, intros, --unfold bilin_form.is_ortho, 
+  unfold_coes at y, 
+  sorry
    end 
-
+--unfold orthogonal_complement, 
 /- end module facts -/
 
 
@@ -102,16 +116,28 @@ def conjugated_bilinear_form (ρ : group_representation G R M) (B : bilin_form R
 def is_invariant (ρ : group_representation G R M) (B : bilin_form R M) : Prop := 
   ∀ g : G, B = B.comp (ρ g) (ρ g)
 
+/- define a subclass of invariant bilinear forms ? -/
+
 def standard_invariant_bilinear_form [fintype G] (ρ : group_representation G R M) (B : bilin_form R M) : bilin_form R M :=
   (finset.univ.sum (λ g:G, B.comp (ρ g) (ρ g))) 
 
 variables g2 : G
 
+def foo (ρ : group_representation G R M) : M ≃ₗ[R] M := (ρ.to_fun g2).to_linear_equiv
+#check foo
+
 #check finset.sum_bij (λ g:G, λ _, g * g2⁻¹ ) 
 
 lemma sum_apply {α} (s : finset α) (f : α → bilin_form R M) (m m' : M) : s.sum f m m' = s.sum (λ x, f x m m') := sorry 
 
-example (ρ : group_representation G R M) (B : bilin_form R M) : is_invariant ρ (standard_invariant_bilinear_form ρ B) :=
+example (ρ : group_representation G R M) (a g1 : G) (x : M) : ρ (a*g1) x = ρ a (ρ g1 x) := 
+begin rw monoid_hom.map_mul ρ a g1, --unfold group_representation at ρ, rename ρ ρ1, 
+unfold_coes, simp, sorry,
+--simp [general_linear_group.general_linear_equiv_to_linear_map],
+--unfold general_linear_group at ρ1, 
+end
+
+lemma  standard_invariant_bilinear_form_is_invariant (ρ : group_representation G R M) (B : bilin_form R M) : is_invariant ρ (standard_invariant_bilinear_form ρ B) :=
 begin unfold standard_invariant_bilinear_form, unfold is_invariant, intro, rename g g1, 
 ext, simp [sum_apply], symmetry, 
   apply finset.sum_bij (λ g:G, λ _, g * g1 ),
@@ -123,26 +149,28 @@ ext, simp [sum_apply], symmetry,
   intros, use b * g1⁻¹, simp
 end
 
-/- this requires the cokernel of α
-lemma subrep_is_invariant (ρ : group_representation G R M) (π : group_representation G R M') :
-  Π s : subrepresentation ρ π, invariant_subspace ρ (s.α M) :=
--/
-
 def irreducible (ρ : group_representation G R M) : Prop :=
   ∀ N : submodule R M, invariant_subspace ρ N → N = ⊥ ∨ N = ⊤
 
 
 /-- Maschke's theorem -/
 
-lemma standard_orthogonal_complement_is_invariant {ρ : group_representation G R M} (B : bilin_form R M): 
-  ∀ N N' : submodule R M, invariant_subspace ρ N → is_orthogonal B N N' → invariant_subspace ρ N' := sorry
+lemma orthogonal_complement_is_invariant {ρ : group_representation G R M} (B : bilin_form R M): 
+  ∀ N N' : submodule R M, is_invariant ρ B → invariant_subspace ρ N → is_orthogonal B N N' → invariant_subspace ρ N' :=
+begin  unfold is_invariant, unfold invariant_subspace, unfold is_orthogonal, intros, 
+  sorry
+end
 
 theorem maschke (ρ : group_representation G R M) (B : bilin_form R M) : ∀ N : submodule R M,
   invariant_subspace ρ N → ∃ N', invariant_subspace ρ N' ∧ complementary N N' := 
-begin intros, let N' := orthogonal_complement B N, use N', 
-have h1 := (orthogonal_complement_is_orthogonal _ _), 
-have h := standard_orthogonal_complement_is_invariant B N N' a h1,
-apply and.intro, exact h, sorry, 
+begin intros, 
+  let std := standard_invariant_bilinear_form ρ B,
+  let N' := orthogonal_complement std N, 
+  have h := orthogonal_complement_is_invariant std N N' 
+           (standard_invariant_bilinear_form_is_invariant ρ B) a _,
+  use N', apply and.intro, exact h,
+  apply orthogonal_imp_complementary ,
+  repeat { apply orthogonal_complement_is_orthogonal },
 end
 
 end finite_groups

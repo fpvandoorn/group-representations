@@ -120,6 +120,9 @@ def sum_over_basis (s : set V) (hs1 : is_basis K (subtype.val : s → V)) (hs2 :
 begin let sfin := hs2.to_finset, exact sfin.sum f, 
 end
 
+/- Note that this need not depend on a bilinear form, 
+it could be done given a basis of N and a way to complete it to a basis of M.
+This construction would work for rings. -/
 def projector_on_submodule {v : ι → V} {Hb: is_basis K v} {B : bilin_form K V} (N : submodule K V) : V →ₗ[K] V := 
 begin 
   let f : ι → V := sorry, 

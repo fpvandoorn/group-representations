@@ -3,6 +3,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: ...
 -/
 import linear_algebra.basic linear_algebra.finite_dimensional linear_algebra.bilinear_form
+import linear_algebra.basis linear_algebra.finite_dimensional 
 import algebra.module logic.unique data.fintype.card
 import tactic.apply_fun
 
@@ -32,6 +33,19 @@ def complementary (N N' : submodule R M) : Prop := N ⊔ N' = ⊤ ∧ N ⊓ N' =
 
 def is_projection (π: M →ₗ[R] M) : Prop := ∀ x, π (π x) = π x 
 
+def is_projection_on_submodule (N : submodule R M) (π: M →ₗ[R] M) : Prop := is_projection π ∧ ∀ x : N, π x = x
+
+def is_orthogonal_projection_on_submodule (B : bilin_form R M) (N : submodule R M) (π: M →ₗ[R] M) : Prop :=
+  is_projection_on_submodule N π ∧ ∀ x : M, ∀ y : N, bilin_form.is_ortho B x y → π x = 0
+
+lemma exists_orthogonal_projection_on_submodule (B : bilin_form R M) (N : submodule R M) : 
+  ∃ π: M →ₗ[R] M, is_orthogonal_projection_on_submodule B N π := sorry
+
+lemma orthogonal_projection_on_submodule_range (B : bilin_form R M) (N : submodule R M) (π: M →ₗ[R] M) :
+  is_projection_on_submodule N π → ∀ x : M, π x ∈ N := 
+  begin unfold is_projection_on_submodule, unfold is_projection, intro, sorry, 
+  end
+
 lemma eq_bot (N : submodule R M) : N = ⊥ ↔ ∀ x : M, x ∈ N → x=0 := 
 begin rw [eq_bot_iff], split, { intros h x hx, simpa using h hx }, { intros h x hx, simp [h x hx] } end
 
@@ -59,20 +73,27 @@ def orthogonal_complement (B : bilin_form R M) (N : submodule R M) : submodule R
   end,
   smul := λ r x hx y hy, by { unfold bilin_form.is_ortho at *, rw [bilin_form.smul_left, hx y hy, mul_zero] } } 
 
-/- this is trying to sum over a basis, which may need R to be a field? -/
-def projector_on_submodule [module R M] {B : bilin_form R M} (N : submodule R M) {s : finset N} : M →ₗ[R] M := 
- sorry -- s.sum (λ x, B.to_linear_map x) 
+--lemma orthogonal_complement_bijective_to_quotient {B : bilin_form R M} (N : submodule R M) : 
+--  linear_algebra.of_bijective _ _ := sorry
 
-lemma orthogonal_complement_bijective_to_quotient := sorry
+lemma orthogonal_projection_on_submodule_coker (B : bilin_form R M) (N : submodule R M) (π: M →ₗ[R] M) :
+  is_projection_on_submodule N π → ∀ x : M, x - π x ∈ orthogonal_complement B N := 
+  begin unfold is_projection_on_submodule, unfold is_projection, intro, sorry, 
+  end
 
 lemma orthogonal_complement_is_complementary
   (B : bilin_form R M) (N : submodule R M) : complementary N (orthogonal_complement B N) :=
   begin unfold complementary, intros, split, 
-  { rw eq_top_iff', intro, rw mem_sup, simp, },
-  unfold_coes at y, 
+  cases exists_orthogonal_projection_on_submodule B N, 
+  { rw eq_top_iff', intro, rw mem_sup, simp, use w x, split, 
+  apply orthogonal_projection_on_submodule_range, exact B, unfold is_orthogonal_projection_on_submodule at h, exact h.1,
+  use (x - w x), simp, apply orthogonal_projection_on_submodule_coker, 
+  unfold is_orthogonal_projection_on_submodule at h, exact h.1 },
+  rw eq_bot, simp, intros, unfold orthogonal_complement at a_1, -- ?
+  --rw [set.set_of_app_iff] at a_1, 
   sorry
    end 
---unfold orthogonal_complement, 
+
 /- end module facts -/
 
 
@@ -93,9 +114,16 @@ protected structure equiv (ρ : group_representation G R M) (π : group_represen
 section field
 
 variables  {K : Type v} [field K] {V : Type w} [add_comm_group V] [vector_space K V] (H : finite_dimensional K V)
+        {ι : Type*} {v : ι → V} (Hb: is_basis K v)
 
 def sum_over_basis (s : set V) (hs1 : is_basis K (subtype.val : s → V)) (hs2 : s.finite) (f : V → K) : K := 
 begin let sfin := hs2.to_finset, exact sfin.sum f, 
+end
+
+def projector_on_submodule {v : ι → V} {Hb: is_basis K v} {B : bilin_form K V} (N : submodule K V) : V →ₗ[K] V := 
+begin 
+  let f : ι → V := sorry, 
+  exact is_basis.constr Hb f, 
 end
 
 end field
@@ -135,18 +163,13 @@ def foo (ρ : group_representation G R M) : M ≃ₗ[R] M := (ρ.to_fun g2).to_l
 
 #check finset.sum_bij (λ g:G, λ _, g * g2⁻¹ ) 
 
-lemma sum_apply {α} (s : finset α) (f : α → bilin_form R M) (m m' : M) : s.sum f m m' = s.sum (λ x, f x m m') := sorry 
-
-example (ρ : group_representation G R M) (a g1 : G) (x : M) : ρ (a*g1) x = ρ a (ρ g1 x) := 
-begin rw monoid_hom.map_mul ρ a g1, --unfold group_representation at ρ, rename ρ ρ1, 
-unfold_coes, simp, sorry,
---simp [general_linear_group.general_linear_equiv_to_linear_map],
---unfold general_linear_group at ρ1, 
-end
+lemma sum_apply {α} (s : finset α) (f : α → bilin_form R M) (m m' : M) : s.sum f m m' = s.sum (λ x, f x m m') := 
+begin sorry
+end 
 
 lemma  standard_invariant_bilinear_form_is_invariant (ρ : group_representation G R M) (B : bilin_form R M) : is_invariant ρ (standard_invariant_bilinear_form ρ B) :=
 begin unfold standard_invariant_bilinear_form, unfold is_invariant, intro, rename g g1, 
-ext, simp [sum_apply], symmetry, 
+  ext, simp [sum_apply], symmetry, 
   apply finset.sum_bij (λ g:G, λ _, g * g1 ),
   simp_intros, 
   { intros, apply bilin_form.coe_fn_congr, repeat { dsimp, rw ρ.map_mul, refl, } }, 
@@ -161,8 +184,11 @@ def irreducible (ρ : group_representation G R M) : Prop :=
 /-- Maschke's theorem -/
 
 lemma orthogonal_complement_is_invariant {ρ : group_representation G R M} (B : bilin_form R M): 
-  ∀ N N' : submodule R M, is_invariant ρ B → invariant_subspace ρ N → complementary N N' → invariant_subspace ρ N' :=
-begin  unfold is_invariant, unfold invariant_subspace, unfold complementary, intros, 
+  ∀ N N' : submodule R M, is_invariant ρ B → invariant_subspace ρ N → is_orthogonal B N N' → invariant_subspace ρ N' :=
+begin  unfold is_invariant, unfold invariant_subspace, unfold is_orthogonal, intros, 
+  dsimp, 
+  unfold bilin_form.is_ortho at a_2, rw [a g] at a_2, dsimp at a_2, 
+  -- at this point a_1 with a_2 imply that ρ g x is in the orthogonal complement.  by definition this is N'.
   sorry
 end
 
@@ -174,9 +200,8 @@ begin intros,
   have h := orthogonal_complement_is_invariant std N N' 
            (standard_invariant_bilinear_form_is_invariant ρ B) a _,
   use N', apply and.intro, exact h,
-  apply orthogonal_imp_complementary ,
-  repeat { apply orthogonal_complement_is_orthogonal },
-end
+  repeat { apply orthogonal_complement_is_complementary },
+ end
 
 end finite_groups
 

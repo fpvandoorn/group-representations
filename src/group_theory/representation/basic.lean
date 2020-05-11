@@ -56,6 +56,9 @@ begin
   { intros h x hx, simp [h x hx] }
 end
 
+lemma inf_eq_bot {N N' : submodule R M} : N ⊓ N' = ⊥ ↔ disjoint N N' :=
+by { rw [eq_bot_iff], refl }
+
 example (π : M →ₗ[R] M) : is_projection π → complementary (ker π) (range π) :=
 begin
   unfold is_projection, intro hp, split,
@@ -96,10 +99,11 @@ begin
   unfold is_projection_on_submodule, unfold is_projection, intro, sorry,
 end
 
-lemma orthogonal_complement_is_complementary
-  (B : bilin_form R M) (N : submodule R M)
-  (hB : ∀ x, B x x = 0 → x = 0) -- is this assumption too strong?
-  : complementary N (orthogonal_complement B N) :=
+def is_definite (B : bilin_form R M) : Prop :=
+∀ x, B x x = 0 → x = 0
+
+lemma orthogonal_complement_is_complementary (B : bilin_form R M) (N : submodule R M)
+  (hB : is_definite B) : complementary N (orthogonal_complement B N) :=
 begin
   intros, split,
   rcases exists_orthogonal_projection_on_submodule B N with ⟨π, hπ⟩,
@@ -138,6 +142,59 @@ variables {K : Type v} [field K] {V : Type w} [add_comm_group V] [vector_space K
 noncomputable example (s : set V) (hs1 : is_basis K (subtype.val : s → V))
   (hs2 : s.finite) (f : V → K) : K :=
 begin let sfin := hs2.to_finset, exact sfin.sum f,
+end
+
+/- finding a complementary subspace -/
+
+
+def disjoint_subspaces (N : subspace K V) : set (subspace K V) :=
+{ N' | N ⊓ N' = ⊥ }
+
+-- f '' s = { f(x) | x ∈ s }
+#print instances complete_distrib_lattice
+
+#print inf_Sup_eq
+-- set_option pp.implicit true
+instance : complete_distrib_lattice (subspace K V) :=
+{
+  infi_sup_le_sup_Inf := sorry,
+  inf_Sup_le_supr_inf := sorry,
+  ..submodule.complete_lattice
+}
+
+instance disjoint_subspaces.has_Sup {N : subspace K V} : has_Sup (disjoint_subspaces N) :=
+⟨λ s, ⟨Sup (subtype.val '' s),
+  by { unfold disjoint_subspaces, simp, rw inf_Sup_eq, rw [supr_eq_bot], intro N',
+    rw supr_eq_bot, rintro ⟨⟨N', hN'⟩, _, rfl⟩, exact hN'
+    }⟩⟩
+
+theorem exists_maximal_disjoint_subspaces (N : subspace K V) :
+  ∃Nmax: disjoint_subspaces N, ∀N, Nmax ≤ N → N = Nmax :=
+begin
+  apply zorn.zorn_partial_order,
+  intros c hc, use Sup c, intros N hN,
+  change N.1 ≤ Sup (subtype.val '' c),
+  refine le_Sup _, simp [hN]
+end
+
+theorem exists_complementary_subspace (N : subspace K V) :
+  ∃N': subspace K V, complementary N N' :=
+begin
+  rcases exists_maximal_disjoint_subspaces N with ⟨⟨N', h1N'⟩, h2N'⟩,
+  use N',
+  refine ⟨_, h1N'⟩,
+  classical,
+  rw eq_top_iff', intro x, by_contra H,
+  let N₂ := N' ⊔ span K {x},
+  have : N ⊓ N₂ = ⊥,
+  { dsimp [N₂], dsimp [disjoint_subspaces] at h1N', rw [inf_sup_left, h1N'],
+    rw inf_eq_bot.mpr, simp,
+    rw submodule.disjoint_span_singleton,
+    intro hx, exfalso, apply H,
+    have : N ≤ N ⊔ N' := le_sup_left,
+    rw submodule.le_def at this, exact this hx
+    },
+  sorry
 end
 
 /- Note that this need not depend on a bilinear form,

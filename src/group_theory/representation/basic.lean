@@ -5,7 +5,7 @@ Authors: Michael Douglas, Floris van Doorn
 import linear_algebra.finite_dimensional linear_algebra.bilinear_form
 import data.fintype.card tactic.apply_fun
 
-universe variables u v w w'
+universe variables u v w w' w''
 
 open linear_map
 
@@ -77,12 +77,28 @@ end lattice
 
 open submodule
 
-section submodule
+namespace submodule
 
-variables {G : Type u} {R : Type v} {M : Type w} {M' : Type w'}
+variables {G : Type u} {R : Type v} {M : Type w} {M' : Type w'} {M'' : Type w''}
   [group G] [comm_ring R] [add_comm_group M] [module R M] [add_comm_group M'] [module R M']
+  [add_comm_group M''] [module R M'']
 
 /- module facts -/
+
+lemma eq_bot_iff' (N : submodule R M) : N = ⊥ ↔ ∀ x : M, x ∈ N → x = 0 :=
+begin
+  rw [eq_bot_iff], split,
+  { intros h x hx, simpa using h hx },
+  { intros h x hx, simp [h x hx] }
+end
+
+@[simp] lemma range_coprod (f : M →ₗ[R] M'') (g : M' →ₗ[R] M'') :
+  (f.coprod g).range = f.range ⊔ g.range :=
+begin
+  unfold linear_map.range,
+  convert map_coprod_prod _ _ _ _,
+  rw prod_top,
+end
 
 lemma mem_sup_left {p p' : submodule R M} {x : M} (h : x ∈ p) : x ∈ p ⊔ p' :=
 by { have : p ≤ p ⊔ p' := le_sup_left, exact this h }
@@ -90,14 +106,70 @@ by { have : p ≤ p ⊔ p' := le_sup_left, exact this h }
 lemma mem_sup_right {p p' : submodule R M} {x : M} (h : x ∈ p') : x ∈ p ⊔ p' :=
 by { have : p' ≤ p ⊔ p' := le_sup_right, exact this h }
 
+def is_projection (π : M →ₗ[R] M) : Prop := ∀ x, π (π x) = π x
+
 def complementary {α} [bounded_lattice α] (x x' : α) : Prop :=
 covering x x' ∧ disjoint x x'
 
-def is_projection (π : M →ₗ[R] M) : Prop := ∀ x, π (π x) = π x
+namespace complementary
+protected noncomputable def linear_equiv {N N' : submodule R M} (h : complementary N N') :
+  (N × N') ≃ₗ[R] M := -- default precendences are wrong
+begin
+  apply linear_equiv.of_bijective (N.subtype.coprod N'.subtype),
+  { rw [eq_bot_iff'], rintro ⟨⟨x, hx⟩, ⟨x', hx'⟩⟩ hxx',
+    simp only [mem_ker, subtype_apply, submodule.coe_mk, coprod_apply] at hxx',
+    have : x = 0,
+    { apply disjoint_def.mp h.2 x hx,
+      rw [← eq_neg_iff_add_eq_zero] at hxx', rw hxx', exact neg_mem _ hx' },
+    subst this, rw [zero_add] at hxx', subst hxx', refl },
+  { simp only [range_coprod, range_subtype, h.1.eq_top] }
+end
 
-/- Note: this only states that N ⊆ range π, do we want equality here (we need that for orthogonal_projection_on_submodule_range)-/
+protected noncomputable def pr1 {N N' : submodule R M} (h : complementary N N') :
+  M →ₗ[R] M :=
+N.subtype.comp $ (fst R N N').comp h.linear_equiv.symm
+
+lemma pr1_mem {N N' : submodule R M} (h : complementary N N') (x : M) :
+  h.pr1 x ∈ N :=
+(fst R N N' $ h.linear_equiv.symm x).2
+
+protected noncomputable def pr2 {N N' : submodule R M} (h : complementary N N') :
+  M →ₗ[R] M :=
+N'.subtype.comp $ (snd R N N').comp h.linear_equiv.symm
+
+lemma pr2_mem {N N' : submodule R M} (h : complementary N N') (x : M) :
+  h.pr2 x ∈ N' :=
+(snd R N N' $ h.linear_equiv.symm x).2
+
+@[simp] lemma pr1_add_pr2 {N N' : submodule R M} (h : complementary N N') (x : M) :
+  h.pr1 x + h.pr2 x = x :=
+h.linear_equiv.right_inv x
+
+lemma pr1_eq_and_pr2_eq {N N' : submodule R M} (h : complementary N N') {x y z : M}
+  (hx : x ∈ N) (hy : y ∈ N') (hz : z = x + y) : h.pr1 z = x ∧ h.pr2 z = y :=
+begin
+ subst z, have h2 := h.linear_equiv.left_inv (⟨x, hx⟩, ⟨y, hy⟩),
+ simp only [prod.ext_iff, subtype.ext] at h2, exact h2
+end
+
+lemma pr1_pr1 {N N' : submodule R M} (h : complementary N N') (x : M) :
+  h.pr1 (h.pr1 x) = h.pr1 x :=
+(h.pr1_eq_and_pr2_eq (h.pr1_mem x) (zero_mem _) (by rw add_zero)).1
+
+lemma pr2_pr2 {N N' : submodule R M} (h : complementary N N') (x : M) :
+  h.pr2 (h.pr2 x) = h.pr2 x :=
+(h.pr1_eq_and_pr2_eq (zero_mem _) (h.pr2_mem x) (by rw zero_add)).2
+
+lemma range_pr1 {N N' : submodule R M} (h : complementary N N') : range h.pr1 = N :=
+by simp [complementary.pr1, range_comp]
+
+lemma range_pr2 {N N' : submodule R M} (h : complementary N N') : range h.pr2 = N' :=
+by simp [complementary.pr2, range_comp]
+
+end complementary
+
 def is_projection_on_submodule (N : submodule R M) (π : M →ₗ[R] M) : Prop :=
-is_projection π ∧ ∀ x : N, π x = x
+is_projection π ∧ range π = N
 
 def is_orthogonal_projection_on_submodule (B : bilin_form R M) (N : submodule R M) (π : M →ₗ[R] M) :
   Prop :=
@@ -113,16 +185,6 @@ begin
   unfold is_projection_on_submodule, unfold is_projection, intro, sorry,
 end
 
-lemma eq_bot_iff' (N : submodule R M) : N = ⊥ ↔ ∀ x : M, x ∈ N → x = 0 :=
-begin
-  rw [eq_bot_iff], split,
-  { intros h x hx, simpa using h hx },
-  { intros h x hx, simp [h x hx] }
-end
-
-lemma inf_eq_bot {N N' : submodule R M} : N ⊓ N' = ⊥ ↔ disjoint N N' :=
-by { rw [eq_bot_iff], refl }
-
 example (π : M →ₗ[R] M) : is_projection π → complementary (ker π) (range π) :=
 begin
   unfold is_projection, intro hp, split,
@@ -130,7 +192,7 @@ begin
     split, { simp [hp] },
     use π x, simp only [and_true, sub_apply, sub_add_cancel, mem_range, eq_self_iff_true, id_apply],
     use x },
-  { intros, rw [disjoint_iff, eq_bot_iff'], simp only [and_imp, mem_ker, mem_range, mem_inf, exists_imp_distrib],
+  { intros, rw [disjoint_def], simp only [and_imp, mem_ker, mem_range, mem_inf, exists_imp_distrib],
     intros x hx x' hx', have h2x' := hx', apply_fun π at hx', simp [hp, hx] at hx', cc }
 end
 
@@ -173,7 +235,7 @@ begin
   { rw [covering_iff, eq_top_iff'], intro, rw mem_sup, simp, use π x, split,
     apply orthogonal_projection_on_submodule_range B _ _ hπ.1,
     use (x - π x), simp [orthogonal_projection_on_submodule_coker, hπ.1] },
-  { rw [disjoint_iff, eq_bot_iff'], simp, intros x hx h2x, apply hB, apply h2x, exact hx }
+  { rw [disjoint_def], intros x hx h2x, apply hB, apply h2x, exact hx }
 end
 
 lemma is_orthogonal_orthogonal_complement (B : bilin_form R M) (N : submodule R M)
@@ -183,9 +245,10 @@ begin
   exact hx y hy
 end
 
-instance : has_coe (general_linear_group R M) (M →ₗ[R] M) := ⟨λ x, x.1⟩
+instance general_linear_group.coe : has_coe (general_linear_group R M) (M →ₗ[R] M) := ⟨λ x, x.1⟩
 
 end submodule
+open submodule
 
 section subspace
 
@@ -250,6 +313,8 @@ begin
 end
 
 end subspace
+
+
 
 /-- A representation of a group `G` on an `R`-module `M` is a group homomorphism from `G` to
   `GL(M)`. Normally `M` is a vector space, but we don't need that for the definition. -/

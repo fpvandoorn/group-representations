@@ -106,12 +106,15 @@ by { have : p ≤ p ⊔ p' := le_sup_left, exact this h }
 lemma mem_sup_right {p p' : submodule R M} {x : M} (h : x ∈ p') : x ∈ p ⊔ p' :=
 by { have : p' ≤ p ⊔ p' := le_sup_right, exact this h }
 
+/-- A projection is an idempotent linear map -/
 def is_projection (π : M →ₗ[R] M) : Prop := ∀ x, π (π x) = π x
 
+/-- Two elements in a lattice are complementary if they have meet ⊥ and join ⊤. -/
 def complementary {α} [bounded_lattice α] (x x' : α) : Prop :=
 covering x x' ∧ disjoint x x'
 
 namespace complementary
+/-- Given two complementary submodules `N` and `N'` of an `R`-module `M`, we get a linear equivalence from `N × N'` to `M` by adding the elements of `N` and `N'`. -/
 protected noncomputable def linear_equiv {N N' : submodule R M} (h : complementary N N') :
   (N × N') ≃ₗ[R] M := -- default precendences are wrong
 begin
@@ -125,6 +128,7 @@ begin
   { simp only [range_coprod, range_subtype, h.1.eq_top] }
 end
 
+/-- Given two complementary submodules `N` and `N'` of an `R`-module `M`, the projection onto `N` along `N'`. -/
 protected noncomputable def pr1 {N N' : submodule R M} (h : complementary N N') :
   M →ₗ[R] M :=
 N.subtype.comp $ (fst R N N').comp h.linear_equiv.symm
@@ -133,6 +137,7 @@ lemma pr1_mem {N N' : submodule R M} (h : complementary N N') (x : M) :
   h.pr1 x ∈ N :=
 (fst R N N' $ h.linear_equiv.symm x).2
 
+/-- Given two complementary submodules `N` and `N'` of an `R`-module `M`, the projection onto `N'` along `N`. -/
 protected noncomputable def pr2 {N N' : submodule R M} (h : complementary N N') :
   M →ₗ[R] M :=
 N'.subtype.comp $ (snd R N N').comp h.linear_equiv.symm
@@ -185,7 +190,7 @@ begin
   unfold is_projection_on_submodule, unfold is_projection, intro, sorry,
 end
 
-example (π : M →ₗ[R] M) : is_projection π → complementary (ker π) (range π) :=
+lemma complementary_ker_range {π : M →ₗ[R] M} : is_projection π → complementary (ker π) (range π) :=
 begin
   unfold is_projection, intro hp, split,
   { rw [covering_iff, eq_top_iff'], intro x, rw mem_sup, use (linear_map.id - π) x,
@@ -196,15 +201,18 @@ begin
     intros x hx x' hx', have h2x' := hx', apply_fun π at hx', simp [hp, hx] at hx', cc }
 end
 
+/-- A bilinear form is nondegenerate if `B x (-)` is the zero function only if `x` is zero. -/
 def nondegenerate (B : bilin_form R M) : Prop :=
-∀ x : M, 0 ≠ x → ∃ y : M, 0 ≠ B x y
+∀ x : M, (∀ y : M, B x y = 0) → x = 0
 
 lemma nondegenerate_bilinear_form_exists : ∃ B : bilin_form R M, nondegenerate B := sorry
 /- sum over a noncanonical basis - does this require R to be a field ?  -/
 
+/- `is_orthogonal B N N'` states that `N` and `N'` are orthogonal w.r.t. bilinear form `B`. -/
 def is_orthogonal (B : bilin_form R M) (N N' : submodule R M) : Prop :=
 ∀ x y, x ∈ N → y ∈ N' → bilin_form.is_ortho B x y
 
+/- The orthogonal complement of a submodule w.r.t. a bilinear form. -/
 @[simps] def orthogonal_complement (B : bilin_form R M) (N : submodule R M) : submodule R M :=
 { carrier := {x:M|∀ y ∈ N, bilin_form.is_ortho B x y},
   zero := λ y hy, bilin_form.ortho_zero y,
@@ -224,6 +232,7 @@ begin
   unfold is_projection_on_submodule, unfold is_projection, intro, sorry,
 end
 
+/- A bilinear form is definite if `B x x = 0` only when `x = 0`. -/
 def is_definite (B : bilin_form R M) : Prop :=
 ∀ x, B x x = 0 → x = 0
 
@@ -240,10 +249,7 @@ end
 
 lemma is_orthogonal_orthogonal_complement (B : bilin_form R M) (N : submodule R M)
   : is_orthogonal B (orthogonal_complement B N) N :=
-begin
-  intros x y hx hy,
-  exact hx y hy
-end
+by { intros x y hx hy, exact hx y hy }
 
 instance general_linear_group.coe : has_coe (general_linear_group R M) (M →ₗ[R] M) := ⟨λ x, x.1⟩
 
@@ -314,8 +320,6 @@ end
 
 end subspace
 
-
-
 /-- A representation of a group `G` on an `R`-module `M` is a group homomorphism from `G` to
   `GL(M)`. Normally `M` is a vector space, but we don't need that for the definition. -/
 def group_representation (G R M : Type*) [group G] [ring R] [add_comm_group M] [module R M] :
@@ -369,6 +373,7 @@ def sum_over_G {s : finset G} (ρ : group_representation G R M) : M →ₗ[R] M 
 s.sum (λ g:G, general_linear_group.to_linear_equiv (ρ g) )
 #print sum_over_G
 
+/-- A submodule `N` is invariant under a representation `ρ` if `ρ g` maps `N` into `N` for all `g`. -/
 def invariant_subspace (ρ : group_representation G R M) (N : submodule R M) : Prop :=
 ∀ x : N, ∀ g : G, ρ g x ∈ N
 
@@ -378,11 +383,11 @@ def conjugated_bilinear_form (ρ : group_representation G R M) (B : bilin_form R
   bilin_form R M :=
 B.comp (ρ g) (ρ g)
 
+/-- A bilinear form `B` is invariant under a representation `ρ` if `B = B ∘ (ρ g × ρ g)` for all `g`. -/
 def is_invariant (ρ : group_representation G R M) (B : bilin_form R M) : Prop :=
-  ∀ g : G, B = B.comp (ρ g) (ρ g)
+∀ g : G, B = B.comp (ρ g) (ρ g)
 
-/- define a subclass of invariant bilinear forms ? -/
-
+/-- The standard bilinear form for a finite group `G`, defined by summing over all group elements. -/
 def standard_invariant_bilinear_form [fintype G] (ρ : group_representation G R M)
   (B : bilin_form R M) : bilin_form R M :=
 finset.univ.sum (λ g : G, B.comp (ρ g) (ρ g))
@@ -411,9 +416,9 @@ begin
   { intros, use b * g1⁻¹, simp }
 end
 
+/-- An `R`-module `M` is irreducible if every invariant submodule is either `⊥` or `⊤`. -/
 def irreducible (ρ : group_representation G R M) : Prop :=
 ∀ N : submodule R M, invariant_subspace ρ N → N = ⊥ ∨ N = ⊤
-
 
 /-- Maschke's theorem -/
 

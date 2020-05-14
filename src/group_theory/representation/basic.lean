@@ -113,6 +113,10 @@ def is_projection (π : M →ₗ[R] M) : Prop := ∀ x, π (π x) = π x
 def complementary {α} [bounded_lattice α] (x x' : α) : Prop :=
 covering x x' ∧ disjoint x x'
 
+lemma complementary_symm {α} [bounded_lattice α] {x x' : α} :
+  complementary x x' ↔ complementary x' x :=
+sorry
+
 namespace complementary
 /-- Given two complementary submodules `N` and `N'` of an `R`-module `M`, we get a linear equivalence from `N × N'` to `M` by adding the elements of `N` and `N'`. -/
 protected noncomputable def linear_equiv {N N' : submodule R M} (h : complementary N N') :
@@ -330,6 +334,7 @@ namespace group_representation
 
 variables {G : Type u} {R : Type v} {M : Type w} {M' : Type w'}
   [group G] [comm_ring R] [add_comm_group M] [module R M] [add_comm_group M'] [module R M']
+  {ρ : group_representation G R M} {π : M →ₗ[R] M}
 
 instance : has_coe_to_fun (group_representation G R M) := ⟨_, λ f, f.to_fun⟩
 
@@ -350,6 +355,7 @@ variables {K : Type v} [field K] {V : Type w} [add_comm_group V] [vector_space K
           (H : finite_dimensional K V)
           {ι : Type*} {v : ι → V} (Hb: is_basis K v)
 
+
 /- Note that this need not depend on a bilinear form,
 it could be done given a basis of N and a way to complete it to a basis of M.
 This construction would work for rings. -/
@@ -363,8 +369,6 @@ end
 end field
 
 section finite_groups
-
-variable [fintype G]
 
 def sum_over_G1 {s : finset G}  : nat := s.sum 0
 #print sum_over_G1
@@ -404,7 +408,7 @@ lemma sum_apply {α} (s : finset α) (f : α → bilin_form R M) (m m' : M) :
 begin sorry
 end
 
-lemma is_invariant_standard_invariant_bilinear_form (ρ : group_representation G R M)
+lemma is_invariant_standard_invariant_bilinear_form [fintype G] (ρ : group_representation G R M)
   (B : bilin_form R M) : is_invariant ρ (standard_invariant_bilinear_form ρ B) :=
 begin
   unfold standard_invariant_bilinear_form,
@@ -433,7 +437,7 @@ begin
   sorry
 end
 
-theorem maschke (ρ : group_representation G R M) (B : bilin_form R M) : ∀ N : submodule R M,
+theorem maschke [fintype G] (ρ : group_representation G R M) (B : bilin_form R M) : ∀ N : submodule R M,
   invariant_subspace ρ N → ∃ N', invariant_subspace ρ N' ∧ complementary N N' :=
 begin
   intros N hN,
@@ -448,20 +452,66 @@ begin
 
 end finite_groups
 
+def invariant_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) : M →ₗ[R] M :=
+finset.univ.sum (λ g : G, ((ρ g⁻¹).1.comp π).comp (ρ g))
+
+-- def invariant_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) (x : M)
+--   :
+--   M →ₗ[R] M :=
+
+def is_equivariant (ρ : group_representation G R M) (π : M →ₗ[R] M) : Prop :=
+∀ g : G, ∀ x : M, π (ρ g x) = ρ g (π x)
+#print has_coe_t_aux.coe
+#print coe_base_aux
+
+def is_multiple_of_projection (π : M →ₗ[R] M) (r : R) : Prop := ∀ x, π (π x) = r • π x
+
+lemma is_invariant_ker (h : is_equivariant ρ π) : invariant_subspace ρ (ker π) :=
+begin
+  rintros x g, rw [mem_ker, h g x],
+  have := x.2, unfold ker comap at this, dsimp [submodule.has_coe] at this, unfold_coes at this,
+  sorry
+end
+
+lemma is_equivariant_invariant_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) :
+  is_equivariant ρ (invariant_projector ρ π) :=
+sorry
+
+lemma is_multiple_of_projection_invariant_projector [fintype G] (ρ : group_representation G R M)
+  (π : M →ₗ[R] M) : is_multiple_of_projection (invariant_projector ρ π) (fintype.card G) :=
+sorry
+
+lemma range_invariant_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) :
+  range (invariant_projector ρ π) = range π :=
+sorry
+
+lemma complementary_ker_range {π : M →ₗ[R] M} {r : R} (hr : is_unit r)
+  (h : is_multiple_of_projection π r) : complementary (ker π) (range π) :=
+begin
+  sorry
+  -- unfold is_projection, intro hp, split,
+  -- { rw [covering_iff, eq_top_iff'], intro x, rw mem_sup, use (linear_map.id - π) x,
+  --   split, { simp [hp] },
+  --   use π x, simp only [and_true, sub_apply, sub_add_cancel, mem_range, eq_self_iff_true, id_apply],
+  --   use x },
+  -- { intros, rw [disjoint_def], simp only [and_imp, mem_ker, mem_range, mem_inf, exists_imp_distrib],
+  --   intros x hx x' hx', have h2x' := hx', apply_fun π at hx', simp [hp, hx] at hx', cc }
+end
+
+theorem maschke2 [fintype G] (ρ : group_representation G R M) (N N' : submodule R M)
+  (h : complementary N N') (hN : invariant_subspace ρ N) (hG : is_unit (fintype.card G : R)) :
+  ∃ N', invariant_subspace ρ N' ∧ complementary N N' :=
+begin
+  let π := invariant_projector ρ h.pr1,
+  use ker π,
+  use is_invariant_ker (is_equivariant_invariant_projector ρ h.pr1),
+  rw [complementary_symm, ← h.range_pr1, ← range_invariant_projector ρ h.pr1],
+  convert complementary_ker_range hG (is_multiple_of_projection_invariant_projector ρ h.pr1)
+end
+
+
 end group_representation
 
-/--
-def Mmap := M →ₗ[R] M
-
-def invariant_projector (ρ : group_representation G R M) (B : bilin_form R M) : Mmap → Mmap := λ X, X
--- λ x : M, sum over g, ρ g (π (ρ g⁻¹ x))
-
-theorem maschke2 (ρ : group_representation G R M) (B : bilin_form R M) : ∀ N : submodule R M,
-  invariant_subspace ρ N → ∃ N', invariant_subspace ρ N' ∧ complementary N N' :=
-begin intros,
-  use invariant_projector ρ B projector_on_submodule N,
-end
--/
 
 
 

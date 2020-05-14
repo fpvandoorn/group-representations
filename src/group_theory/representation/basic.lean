@@ -330,13 +330,19 @@ def group_representation (G R M : Type*) [group G] [ring R] [add_comm_group M] [
   Type* :=
 G →* general_linear_group R M
 
-namespace group_representation
-
 variables {G : Type u} {R : Type v} {M : Type w} {M' : Type w'}
   [group G] [comm_ring R] [add_comm_group M] [module R M] [add_comm_group M'] [module R M']
   {ρ : group_representation G R M} {π : M →ₗ[R] M}
 
 instance : has_coe_to_fun (group_representation G R M) := ⟨_, λ f, f.to_fun⟩
+
+/-- A submodule `N` is invariant under a representation `ρ` if `ρ g` maps `N` into `N` for all `g`. -/
+def submodule.invariant_under (ρ : group_representation G R M) (N : submodule R M) : Prop :=
+∀ x : N, ∀ g : G, ρ g x ∈ N
+
+open submodule
+
+namespace group_representation
 
 protected structure equiv (ρ : group_representation G R M) (π : group_representation G R M') :
   Type (max w w') :=
@@ -349,39 +355,9 @@ protected structure equiv (ρ : group_representation G R M) (π : group_represen
   --(commute : ∀(g : G), α ∘ ρ g = π g ∘ α)
   --left_inv := λ m, show (f.inv * f.val) m = m
 
-section field
-
-variables {K : Type v} [field K] {V : Type w} [add_comm_group V] [vector_space K V]
-          (H : finite_dimensional K V)
-          {ι : Type*} {v : ι → V} (Hb: is_basis K v)
-
-
-/- Note that this need not depend on a bilinear form,
-it could be done given a basis of N and a way to complete it to a basis of M.
-This construction would work for rings. -/
-noncomputable def projector_on_submodule {v : ι → V} {Hb: is_basis K v} {B : bilin_form K V}
-  (N : submodule K V) : V →ₗ[K] V :=
-begin
-  let f : ι → V := sorry,
-  exact is_basis.constr Hb f,
-end
-
-end field
-
 section finite_groups
 
-def sum_over_G1 {s : finset G}  : nat := s.sum 0
-#print sum_over_G1
-
-def sum_over_G {s : finset G} (ρ : group_representation G R M) : M →ₗ[R] M :=
-s.sum (λ g:G, general_linear_group.to_linear_equiv (ρ g) )
-#print sum_over_G
-
-/-- A submodule `N` is invariant under a representation `ρ` if `ρ g` maps `N` into `N` for all `g`. -/
-def invariant_subspace (ρ : group_representation G R M) (N : submodule R M) : Prop :=
-∀ x : N, ∀ g : G, ρ g x ∈ N
-
-variables B : bilin_form R M
+variables {B : bilin_form R M}
 
 def conjugated_bilinear_form (ρ : group_representation G R M) (B : bilin_form R M) (g : G) :
   bilin_form R M :=
@@ -396,16 +372,10 @@ def standard_invariant_bilinear_form [fintype G] (ρ : group_representation G R 
   (B : bilin_form R M) : bilin_form R M :=
 finset.univ.sum (λ g : G, B.comp (ρ g) (ρ g))
 
-variables g2 : G
-
-def foo (ρ : group_representation G R M) : M ≃ₗ[R] M := (ρ.to_fun g2).to_linear_equiv
-#check foo
-
-#check finset.sum_bij (λ g:G, λ _, g * g2⁻¹ )
-
 lemma sum_apply {α} (s : finset α) (f : α → bilin_form R M) (m m' : M) :
   s.sum f m m' = s.sum (λ x, f x m m') :=
-begin sorry
+begin
+  sorry
 end
 
 lemma is_invariant_standard_invariant_bilinear_form [fintype G] (ρ : group_representation G R M)
@@ -422,23 +392,24 @@ end
 
 /-- An `R`-module `M` is irreducible if every invariant submodule is either `⊥` or `⊤`. -/
 def irreducible (ρ : group_representation G R M) : Prop :=
-∀ N : submodule R M, invariant_subspace ρ N → N = ⊥ ∨ N = ⊤
+∀ N : submodule R M, N.invariant_under ρ → N = ⊥ ∨ N = ⊤
 
 /-- Maschke's theorem -/
 
 lemma is_invariant_orthogonal_complement {ρ : group_representation G R M} (B : bilin_form R M) :
-  ∀ N N' : submodule R M, is_invariant ρ B → invariant_subspace ρ N → is_orthogonal B N' N →
-  invariant_subspace ρ N' :=
+  ∀ N N' : submodule R M, is_invariant ρ B → N.invariant_under ρ → is_orthogonal B N' N →
+  N'.invariant_under ρ :=
 begin
-  unfold is_invariant, unfold invariant_subspace, unfold is_orthogonal,
+  unfold is_invariant, unfold invariant_under, unfold is_orthogonal,
   intros N N' hρ hN hN' x g, dsimp,
   unfold bilin_form.is_ortho at hN', rw [hρ g] at hN', dsimp at hN',
   -- at this point hN with hN' imply that ρ g x is in the orthogonal complement.  by definition this is N'.
   sorry
 end
 
-theorem maschke [fintype G] (ρ : group_representation G R M) (B : bilin_form R M) : ∀ N : submodule R M,
-  invariant_subspace ρ N → ∃ N', invariant_subspace ρ N' ∧ complementary N N' :=
+theorem maschke [fintype G] (ρ : group_representation G R M) (B : bilin_form R M) :
+  ∀ N : submodule R M, N.invariant_under ρ →
+  ∃ N' : submodule R M, N'.invariant_under ρ ∧ complementary N N' :=
 begin
   intros N hN,
   let std := standard_invariant_bilinear_form ρ B,
@@ -466,7 +437,7 @@ def is_equivariant (ρ : group_representation G R M) (π : M →ₗ[R] M) : Prop
 
 def is_multiple_of_projection (π : M →ₗ[R] M) (r : R) : Prop := ∀ x, π (π x) = r • π x
 
-lemma is_invariant_ker (h : is_equivariant ρ π) : invariant_subspace ρ (ker π) :=
+lemma is_invariant_ker (h : is_equivariant ρ π) : (ker π).invariant_under ρ :=
 begin
   rintros x g, rw [mem_ker, h g x],
   have := x.2, unfold ker comap at this, dsimp [submodule.has_coe] at this, unfold_coes at this,
@@ -499,8 +470,8 @@ begin
 end
 
 theorem maschke2 [fintype G] (ρ : group_representation G R M) (N N' : submodule R M)
-  (h : complementary N N') (hN : invariant_subspace ρ N) (hG : is_unit (fintype.card G : R)) :
-  ∃ N', invariant_subspace ρ N' ∧ complementary N N' :=
+  (h : complementary N N') (hN : N.invariant_under ρ) (hG : is_unit (fintype.card G : R)) :
+  ∃ N' : submodule R M, N'.invariant_under ρ ∧ complementary N N' :=
 begin
   let π := invariant_projector ρ h.pr1,
   use ker π,

@@ -4,76 +4,11 @@ Authors: Michael Douglas, Floris van Doorn
 -/
 import linear_algebra.finite_dimensional linear_algebra.bilinear_form
 import data.fintype.card tactic.apply_fun
+import misc
 
 universe variables u v w w' w''
 
 open linear_map
-
-@[simp] lemma inv_smul_smul {K V : Type*} [field K] [add_comm_group V] [vector_space K V]
-  {k : K} {x : V} (h : k ≠ 0) : k⁻¹ • k • x = x :=
-by rw [←mul_smul, inv_mul_cancel h, one_smul]
-
-@[simp] lemma smul_inv_smul {K V : Type*} [field K] [add_comm_group V] [vector_space K V]
-  {k : K} {x : V} (h : k ≠ 0) : k • k⁻¹ • x = x :=
-by rw [←mul_smul, mul_inv_cancel h, one_smul]
-
-lemma subtype.le_def {α : Type*} [partial_order α] {P : α → Prop} {x y : α}
-  {hx : P x} {hy : P y} : (⟨x, hx⟩ : subtype P) ≤ ⟨y, hy⟩ ↔ x ≤ y :=
-iff.refl _
-
-namespace zorn
-
-/- A version of Zorn's lemma for partial orders where we only have to find an upper bound for nonempty chains -/
-theorem zorn_partial_order_nonempty {α : Type u} [partial_order α] [nonempty α]
-  (h : ∀c:set α, chain (≤) c → c.nonempty → ∃ub, ∀a∈c, a ≤ ub) : ∃m:α, ∀a, m ≤ a → a = m :=
-begin
-  apply zorn_partial_order,
-  intros c hc, classical,
-  cases c.eq_empty_or_nonempty with h2c h2c,
-  { have := _inst_2, cases this with x, use x, intro y, rw h2c, rintro ⟨⟩ },
-  { exact h c hc h2c },
-end
-
-end zorn
-
-section lattice
-variables {α : Type*} [semilattice_sup_top α]
-
-
-/-- Two elements of a lattice are covering if their sup is the top element. -/
-def covering (a b : α) : Prop := ⊤ ≤ a ⊔ b
-
-theorem covering.eq_top {a b : α} (h : covering a b) : a ⊔ b = ⊤ :=
-eq_top_iff.2 h
-
-theorem covering_iff {a b : α} : covering a b ↔ a ⊔ b = ⊤ :=
-eq_top_iff.symm
-
-theorem covering.comm {a b : α} : covering a b ↔ covering b a :=
-by rw [covering, covering, sup_comm]
-
-theorem covering.symm {a b : α} : covering a b → covering b a :=
-covering.comm.1
-
-@[simp] theorem covering_top_left {a : α} : covering ⊤ a := covering_iff.2 top_sup_eq
-@[simp] theorem covering_top_right {a : α} : covering a ⊤ := covering_iff.2 sup_top_eq
-
-theorem covering.mono {a b c d : α} (h₁ : a ≤ b) (h₂ : c ≤ d) (h : covering a c) : covering b d :=
-le_trans h (sup_le_sup h₁ h₂)
-
-theorem covering.mono_left {a b c : α} (h : a ≤ b) : covering a c → covering b c :=
-covering.mono h (le_refl _)
-
-theorem covering.mono_right {a b c : α} (h : b ≤ c) : covering a b → covering a c :=
-covering.mono (le_refl _) h
-
-@[simp] lemma covering_self {a : α} : covering a a ↔ a = ⊤ :=
-by simp [covering]
-
-lemma covering.ne {a b : α} (ha : a ≠ ⊤) (hab : covering a b) : a ≠ b :=
-by { intro h, rw [←h, covering_self] at hab, exact ha hab }
-
-end lattice
 
 variables {G : Type u} {R : Type v} {M : Type w} {M' : Type w'} {M'' : Type w''}
   [group G] [comm_ring R] [add_comm_group M] [module R M] [add_comm_group M'] [module R M']
@@ -112,9 +47,9 @@ by { have : p' ≤ p ⊔ p' := le_sup_right, exact this h }
 def complementary {α} [bounded_lattice α] (x x' : α) : Prop :=
 covering x x' ∧ disjoint x x'
 
-lemma complementary_symm {α} [bounded_lattice α] {x x' : α} :
+lemma complementary.comm {α} [bounded_lattice α] {x x' : α} :
   complementary x x' ↔ complementary x' x :=
-sorry
+by { dsimp [complementary], rw [covering.comm, disjoint.comm] }
 
 namespace complementary
 /-- Given two complementary submodules `N` and `N'` of an `R`-module `M`, we get a linear equivalence from `N × N'` to `M` by adding the elements of `N` and `N'`. -/
@@ -188,7 +123,7 @@ begin
     intros x hx x' hx', have h2x' := hx', apply_fun π at hx', simp [hp, hx] at hx', cc }
 end
 
-instance general_linear_group.coe : has_coe (general_linear_group R M) (M →ₗ[R] M) := ⟨λ x, x.1⟩
+-- instance general_linear_group.coe : has_coe (general_linear_group R M) (M →ₗ[R] M) := ⟨λ x, x.1⟩
 
 end submodule
 open submodule
@@ -257,7 +192,7 @@ end subspace
   `GL(M)`. Normally `M` is a vector space, but we don't need that for the definition. -/
 @[derive inhabited] def group_representation (G R M : Type*) [group G] [ring R] [add_comm_group M]
   [module R M] : Type* :=
-G →* general_linear_group R M
+G →* M →ₗ[R] M
 
 variables {ρ : group_representation G R M} {π : M →ₗ[R] M}
 
@@ -265,7 +200,7 @@ instance : has_coe_to_fun (group_representation G R M) := ⟨_, λ f, f.to_fun�
 
 /-- A submodule `N` is invariant under a representation `ρ` if `ρ g` maps `N` into `N` for all `g`. -/
 def submodule.invariant_under (ρ : group_representation G R M) (N : submodule R M) : Prop :=
-∀ x : N, ∀ g : G, ρ g x ∈ N
+∀ x ∈ N, ∀ g : G, ρ g x ∈ N
 
 open submodule
 
@@ -295,20 +230,16 @@ def is_equivariant (ρ : group_representation G R M) (π : M →ₗ[R] M) : Prop
 
 /-- The invariant projector modifies a projector `π` to be equivariant. -/
 def invariant_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) : M →ₗ[R] M :=
-finset.univ.sum (λ g : G, ((ρ g⁻¹).1.comp π).comp (ρ g))
+finset.univ.sum (λ g : G, ((ρ g⁻¹).comp π).comp (ρ g))
 
 /-- `π` is a multiple `r` times a projection. -/
 def is_multiple_of_projection (π : M →ₗ[R] M) (r : R) : Prop := ∀ x, π (π x) = r • π x
 
 lemma is_invariant_ker (h : is_equivariant ρ π) : (ker π).invariant_under ρ :=
-begin
-  rintros x g, rw [mem_ker, h g x],
-  have := x.2, unfold ker comap at this, dsimp [submodule.has_coe] at this, unfold_coes at this,
-  sorry
-end
+by { rintros x hx g, rw [mem_ker, h g x, mem_ker.mp hx, linear_map.map_zero] }
 
-lemma is_equivariant_invariant_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) :
-  is_equivariant ρ (invariant_projector ρ π) :=
+lemma is_equivariant_invariant_projector [fintype G] (ρ : group_representation G R M)
+  (π : M →ₗ[R] M) : is_equivariant ρ (invariant_projector ρ π) :=
 sorry
 
 lemma is_multiple_of_projection_invariant_projector [fintype G] (ρ : group_representation G R M)
@@ -332,14 +263,13 @@ begin
   --   intros x hx x' hx', have h2x' := hx', apply_fun π at hx', simp [hp, hx] at hx', cc }
 end
 
-theorem maschke2 [fintype G] (ρ : group_representation G R M) (N N' : submodule R M)
+theorem maschke [fintype G] (ρ : group_representation G R M) (N N' : submodule R M)
   (h : complementary N N') (hN : N.invariant_under ρ) (hG : is_unit (fintype.card G : R)) :
   ∃ N' : submodule R M, N'.invariant_under ρ ∧ complementary N N' :=
 begin
-  let π := invariant_projector ρ h.pr1,
-  use ker π,
+  let π := invariant_projector ρ h.pr1, use ker π,
   use is_invariant_ker (is_equivariant_invariant_projector ρ h.pr1),
-  rw [complementary_symm, ← h.range_pr1, ← range_invariant_projector ρ h.pr1],
+  rw [complementary.comm, ← h.range_pr1, ← range_invariant_projector ρ h.pr1],
   convert complementary_ker_range hG (is_multiple_of_projection_invariant_projector ρ h.pr1)
 end
 

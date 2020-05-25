@@ -43,6 +43,11 @@ by { have : p' ≤ p ⊔ p' := le_sup_right, exact this h }
 /-- A projection is an idempotent linear map -/
 @[reducible] def is_projection (π : M →ₗ[R] M) : Prop := ∀ x, π (π x) = π x
 
+def is_projection_on (N : submodule R M) (π : M →ₗ[R] M): Prop := ∀ x : N, π x = x ∧ range π ≤ N 
+
+lemma projections (N : submodule R M) (π : M →ₗ[R] M) : is_projection_on N π ↔ is_projection π := 
+sorry
+
 /-- Two elements in a lattice are complementary if they have meet ⊥ and join ⊤. -/
 def complementary {α} [bounded_lattice α] (x x' : α) : Prop :=
 covering x x' ∧ disjoint x x'
@@ -232,6 +237,17 @@ def is_equivariant (ρ : group_representation G R M) (π : M →ₗ[R] M) : Prop
 def invariant_multiple_of_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) : M →ₗ[R] M :=
 finset.univ.sum (λ g : G, ((ρ g⁻¹).comp π).comp (ρ g))
 
+lemma invariant_multiple_of_projector_is_scalar_on [fintype G] (r : R) (ρ : group_representation G R M) (π : M →ₗ[R] M) 
+   {N : submodule R M} (hR : N.invariant_under ρ) (hp : is_projection_on N π) : 
+  ∀ x : N, invariant_multiple_of_projector ρ π x = r • x := 
+begin dunfold invariant_multiple_of_projector, intro, 
+  suffices : ∀ g : G, (comp (comp (ρ g⁻¹) π) (ρ g)) ↑x = r • ↑x,
+  { sorry },
+  unfold is_projection_on at hp,
+  unfold invariant_under at hR,
+ simp, intro, sorry -- simp [(hp ↥N ((ρ g) x)).1, hR x], 
+end
+
 noncomputable def invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M) (π : M →ₗ[R] M) : M →ₗ[R] M :=
 begin
   let invr := is_unit_iff_exists_inv.1 hG,
@@ -243,7 +259,9 @@ def is_multiple_of_projection (π : M →ₗ[R] M) (r : R) : Prop := ∀ x, π (
 
 lemma is_multiple_of_projection_invariant_multiple_of_projector [fintype G] (ρ : group_representation G R M)
   (π : M →ₗ[R] M) : is_multiple_of_projection (invariant_multiple_of_projector ρ π) (fintype.card G) :=
-sorry
+begin sorry
+end
+
 
 lemma is_invariant_ker (h : is_equivariant ρ π) : (ker π).invariant_under ρ :=
 by { rintros x hx g, rw [mem_ker, h g x, mem_ker.mp hx, linear_map.map_zero] }
@@ -268,19 +286,27 @@ begin intros g1 x, dunfold invariant_projector, dsimp, rw linear_map.map_smul, c
   { intros, use b * g1⁻¹, simp }
 end
 
+lemma range_smul (f : M →ₗ[R] M) (r : R) (h : is_unit r) : range (r • f) = range f :=
+sorry
+
 lemma range_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M) 
   (π : M →ₗ[R] M) (hR : (range π).invariant_under ρ) : 
   range (invariant_projector hG ρ π) = range π :=
-begin  unfold invariant_projector, simp, 
-rw [range_smul],
---unfold invariant_multiple_of_projector, 
-sorry
+begin  unfold invariant_projector, 
+  let invr :=  (is_unit_iff_exists_inv.1 hG),
+  rw [range_smul _  (classical.some invr)],
+  have foo := invariant_multiple_of_projector_is_scalar_on (fintype.card G : R) ρ π _ _ _,
+  { sorry }, 
+ sorry
 end
 
 
 lemma is_projection_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M)
-  (π : M →ₗ[R] M) : is_projection (invariant_projector hG ρ π) :=
-sorry
+  (π : M →ₗ[R] M) (hp: invariant_under ρ (range π)) : is_projection (invariant_projector hG ρ π) :=
+begin rw ← projections (range π), unfold is_projection_on, intro, split, -- turn ≤ into =
+  { sorry },
+  apply range_invariant_projector, 
+end
 
 theorem maschke [fintype G] (ρ : group_representation G R M) (N N' : submodule R M)
   (h : complementary N N') (hN : N.invariant_under ρ) (hG : is_unit (fintype.card G : R)) :
@@ -290,7 +316,7 @@ begin
   use is_invariant_ker (is_equivariant_invariant_projector hG ρ h.pr1),
   suffices hR : (range (complementary.pr1 h)).invariant_under ρ,
   rw [complementary.comm, ← h.range_pr1, ← range_invariant_projector hG ρ h.pr1 hR],
-  convert complementary_ker_range (is_projection_invariant_projector hG ρ h.pr1),
+  convert complementary_ker_range ((is_projection_invariant_projector hG ρ h.pr1) hR),
   rw complementary.range_pr1, exact hN
 end
 

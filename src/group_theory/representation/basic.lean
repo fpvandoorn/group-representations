@@ -268,13 +268,18 @@ begin intros g1 x, dunfold invariant_projector, dsimp, rw linear_map.map_smul, c
   { intros, use b * g1⁻¹, simp }
 end
 
+lemma range_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M) 
+  (π : M →ₗ[R] M) (hR : (range π).invariant_under ρ) : 
+  range (invariant_projector hG ρ π) = range π :=
+begin  unfold invariant_projector, simp, 
+rw [range_smul],
+--unfold invariant_multiple_of_projector, 
+sorry
+end
+
 
 lemma is_projection_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M)
   (π : M →ₗ[R] M) : is_projection (invariant_projector hG ρ π) :=
-sorry
-
-lemma range_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M) (π : M →ₗ[R] M) :
-  range (invariant_projector hG ρ π) = range π :=
 sorry
 
 theorem maschke [fintype G] (ρ : group_representation G R M) (N N' : submodule R M)
@@ -283,8 +288,10 @@ theorem maschke [fintype G] (ρ : group_representation G R M) (N N' : submodule 
 begin
   let π := invariant_projector hG ρ h.pr1, use ker π,
   use is_invariant_ker (is_equivariant_invariant_projector hG ρ h.pr1),
-  rw [complementary.comm, ← h.range_pr1, ← range_invariant_projector hG ρ h.pr1],
-  convert complementary_ker_range (is_projection_invariant_projector hG ρ h.pr1)
+  suffices hR : (range (complementary.pr1 h)).invariant_under ρ,
+  rw [complementary.comm, ← h.range_pr1, ← range_invariant_projector hG ρ h.pr1 hR],
+  convert complementary_ker_range (is_projection_invariant_projector hG ρ h.pr1),
+  rw complementary.range_pr1, exact hN
 end
 
 

@@ -229,48 +229,62 @@ def is_equivariant (ρ : group_representation G R M) (π : M →ₗ[R] M) : Prop
 ∀ g : G, ∀ x : M, π (ρ g x) = ρ g (π x)
 
 /-- The invariant projector modifies a projector `π` to be equivariant. -/
-def invariant_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) : M →ₗ[R] M :=
+def invariant_multiple_of_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) : M →ₗ[R] M :=
 finset.univ.sum (λ g : G, ((ρ g⁻¹).comp π).comp (ρ g))
+
+noncomputable def invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M) (π : M →ₗ[R] M) : M →ₗ[R] M :=
+begin
+  let invr := is_unit_iff_exists_inv.1 hG,
+  exact (classical.some invr) • invariant_multiple_of_projector ρ π 
+end
 
 /-- `π` is a multiple `r` times a projection. -/
 def is_multiple_of_projection (π : M →ₗ[R] M) (r : R) : Prop := ∀ x, π (π x) = r • π x
 
+lemma is_multiple_of_projection_invariant_multiple_of_projector [fintype G] (ρ : group_representation G R M)
+  (π : M →ₗ[R] M) : is_multiple_of_projection (invariant_multiple_of_projector ρ π) (fintype.card G) :=
+sorry
+
 lemma is_invariant_ker (h : is_equivariant ρ π) : (ker π).invariant_under ρ :=
 by { rintros x hx g, rw [mem_ker, h g x, mem_ker.mp hx, linear_map.map_zero] }
 
-lemma is_equivariant_invariant_projector [fintype G] (ρ : group_representation G R M)
-  (π : M →ₗ[R] M) : is_equivariant ρ (invariant_projector ρ π) :=
-sorry
-
-lemma is_multiple_of_projection_invariant_projector [fintype G] (ρ : group_representation G R M)
-  (π : M →ₗ[R] M) : is_multiple_of_projection (invariant_projector ρ π) (fintype.card G) :=
-sorry
-
-lemma range_invariant_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) :
-  range (invariant_projector ρ π) = range π :=
-sorry
-
-lemma complementary_ker_range {π : M →ₗ[R] M} {r : R} (hr : is_unit r)
-  (h : is_multiple_of_projection π r) : complementary (ker π) (range π) :=
+lemma sum_apply {α} (s : finset α) (f : α → M →ₗ[R] M) (m : M) :
+  s.sum f m = s.sum (λ x, f x m) :=
 begin
   sorry
-  -- unfold is_projection, intro hp, split,
-  -- { rw [covering_iff, eq_top_iff'], intro x, rw mem_sup, use (linear_map.id - π) x,
-  --   split, { simp [hp] },
-  --   use π x, simp only [and_true, sub_apply, sub_add_cancel, mem_range, eq_self_iff_true, id_apply],
-  --   use x },
-  -- { intros, rw [disjoint_def], simp only [and_imp, mem_ker, mem_range, mem_inf, exists_imp_distrib],
-  --   intros x hx x' hx', have h2x' := hx', apply_fun π at hx', simp [hp, hx] at hx', cc }
 end
+
+lemma is_equivariant_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M)
+  (π : M →ₗ[R] M) : is_equivariant ρ (invariant_projector hG ρ π) :=
+begin intros g1 x, dunfold invariant_projector, dsimp, rw linear_map.map_smul, congr, 
+  dunfold invariant_multiple_of_projector, simp [sum_apply], 
+  apply finset.sum_bij (λ g _, g * g1),
+  { intros, apply finset.mem_univ },
+  { intros, dsimp, rw [ ρ.map_mul ], 
+    suffices : (ρ a⁻¹) (π ((ρ a) ((ρ g1) x))) = (ρ (g1 * (a * g1)⁻¹) (π ((ρ a * ρ g1) x))), 
+    { rw this, rw ρ.map_mul, refl },
+    apply congr_fun, congr, simp [mul_inv] }, 
+  { intros g g' _ _ h, simpa using h },
+  { intros, use b * g1⁻¹, simp }
+end
+
+
+lemma is_projection_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M)
+  (π : M →ₗ[R] M) : is_projection (invariant_projector hG ρ π) :=
+sorry
+
+lemma range_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M) (π : M →ₗ[R] M) :
+  range (invariant_projector hG ρ π) = range π :=
+sorry
 
 theorem maschke [fintype G] (ρ : group_representation G R M) (N N' : submodule R M)
   (h : complementary N N') (hN : N.invariant_under ρ) (hG : is_unit (fintype.card G : R)) :
   ∃ N' : submodule R M, N'.invariant_under ρ ∧ complementary N N' :=
 begin
-  let π := invariant_projector ρ h.pr1, use ker π,
-  use is_invariant_ker (is_equivariant_invariant_projector ρ h.pr1),
-  rw [complementary.comm, ← h.range_pr1, ← range_invariant_projector ρ h.pr1],
-  convert complementary_ker_range hG (is_multiple_of_projection_invariant_projector ρ h.pr1)
+  let π := invariant_projector hG ρ h.pr1, use ker π,
+  use is_invariant_ker (is_equivariant_invariant_projector hG ρ h.pr1),
+  rw [complementary.comm, ← h.range_pr1, ← range_invariant_projector hG ρ h.pr1],
+  convert complementary_ker_range (is_projection_invariant_projector hG ρ h.pr1)
 end
 
 

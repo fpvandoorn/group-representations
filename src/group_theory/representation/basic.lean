@@ -237,16 +237,16 @@ def is_equivariant (ρ : group_representation G R M) (π : M →ₗ[R] M) : Prop
 def invariant_multiple_of_projector [fintype G] (ρ : group_representation G R M) (π : M →ₗ[R] M) : M →ₗ[R] M :=
 finset.univ.sum (λ g : G, ((ρ g⁻¹).comp π).comp (ρ g))
 
-lemma invariant_multiple_of_projector_is_scalar_on [fintype G] (r : R) (ρ : group_representation G R M) (π : M →ₗ[R] M) 
-   {N : submodule R M} (hR : N.invariant_under ρ) (hp : is_projection_on N π) : 
-  ∀ x : N, invariant_multiple_of_projector ρ π x = r • x := 
-begin dunfold invariant_multiple_of_projector, intro, 
-  suffices : ∀ g : G, (comp (comp (ρ g⁻¹) π) (ρ g)) ↑x = r • ↑x,
-  { sorry },
-  unfold is_projection_on at hp,
-  unfold invariant_under at hR,
- simp, intro, sorry -- simp [(hp ↥N ((ρ g) x)).1, hR x], 
-end
+-- lemma invariant_multiple_of_projector_is_scalar_on [fintype G] (r : R) (ρ : group_representation G R M) (π : M →ₗ[R] M) 
+--    {N : submodule R M} (hR : N.invariant_under ρ) (hp : is_projection_on N π) : 
+--   ∀ x : N, invariant_multiple_of_projector ρ π x = r • x := 
+-- begin dunfold invariant_multiple_of_projector, intro, 
+--   suffices : ∀ g : G, (comp (comp (ρ g⁻¹) π) (ρ g)) ↑x = r • ↑x,
+--   { sorry },
+--   unfold is_projection_on at hp,
+--   unfold invariant_under at hR,
+--  simp, intro, sorry -- simp [(hp ↥N ((ρ g) x)).1, hR x], 
+-- end
 
 noncomputable def invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M) (π : M →ₗ[R] M) : M →ₗ[R] M :=
 begin
@@ -309,12 +309,29 @@ lemma range_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) 
   range (invariant_projector hG ρ π) = range π :=
 begin  unfold invariant_projector, 
   let invr :=  classical.some(is_unit_iff_exists_inv.1 hG),
-  rw [range_smul _ invr],
+  rw [range_smul _ invr], 
   ext x, split,
   { rintro ⟨x,hx,rfl⟩, dunfold invariant_multiple_of_projector, rw sum_apply, apply sum_mem, intros, dsimp, apply hR, rw mem_range, exact ⟨_, rfl⟩ },
-  { rintro ⟨x,hx,rfl⟩, use invr • π x, use trivial, dunfold invariant_multiple_of_projector, rw sum_apply,
-    convert finset.sum_const (invr • π x), ext g, dsimp, { sorry }, rw finset.card_univ, 
-    convert mul_smul _ _ _, swap, apply semimodule.smul_eq_smul,  rw classical.some_spec (is_unit_iff_exists_inv.1 hG), rw one_smul }
+  { rintro ⟨x,hx,rfl⟩, 
+    let x' := invr • π x, 
+    use x', use trivial, dunfold invariant_multiple_of_projector, rw sum_apply,
+    convert finset.sum_const x', ext g, dsimp, { 
+      have h1 : x' ∈ range π := sorry,
+      have h2 : (ρ g) x' ∈ range π := sorry,
+      rw mem_range at h2, 
+      let y := classical.some h2,
+      have h3 := classical.some_spec h2,
+      rw ← h3, 
+      have h4 : π (π y) = π y := sorry,
+      rw h4, rw h3, 
+      suffices : ∀ x : M, (ρ g⁻¹) ((ρ g) x) = x, 
+      { apply this },
+      intro, 
+      -- simp [←ρ.map_mul, mul_left_inv], 
+      sorry }, 
+    rw finset.card_univ, convert mul_smul _ _ _, swap, apply semimodule.smul_eq_smul, 
+    rw classical.some_spec (is_unit_iff_exists_inv.1 hG), rw one_smul },
+    { sorry }
 end
 
 

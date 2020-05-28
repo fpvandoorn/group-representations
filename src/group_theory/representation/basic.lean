@@ -45,7 +45,7 @@ by { have : p' ≤ p ⊔ p' := le_sup_right, exact this h }
 
 def is_projection_on (N : submodule R M) (π : M →ₗ[R] M): Prop := ∀ x : N, π x = x ∧ range π ≤ N 
 
-lemma projections (N : submodule R M) (π : M →ₗ[R] M) : is_projection_on N π ↔ is_projection π := 
+lemma projections (N : submodule R M) (π : M →ₗ[R] M) : is_projection_on N π → is_projection π := 
 sorry
 
 /-- Two elements in a lattice are complementary if they have meet ⊥ and join ⊤. -/
@@ -254,13 +254,13 @@ begin
   exact (classical.some invr) • invariant_multiple_of_projector ρ π 
 end
 
-/-- `π` is a multiple `r` times a projection. -/
-def is_multiple_of_projection (π : M →ₗ[R] M) (r : R) : Prop := ∀ x, π (π x) = r • π x
+-- /-- `π` is a multiple `r` times a projection. -/
+-- def is_multiple_of_projection (π : M →ₗ[R] M) (r : R) : Prop := ∀ x, π (π x) = r • π x
 
-lemma is_multiple_of_projection_invariant_multiple_of_projector [fintype G] (ρ : group_representation G R M)
-  (π : M →ₗ[R] M) : is_multiple_of_projection (invariant_multiple_of_projector ρ π) (fintype.card G) :=
-begin sorry
-end
+-- lemma is_multiple_of_projection_invariant_multiple_of_projector [fintype G] (ρ : group_representation G R M)
+--   (π : M →ₗ[R] M) : is_multiple_of_projection (invariant_multiple_of_projector ρ π) (fintype.card G) :=
+-- begin sorry
+-- end
 
 
 lemma is_invariant_ker (h : is_equivariant ρ π) : (ker π).invariant_under ρ :=
@@ -286,14 +286,12 @@ begin intros g1 x, dunfold invariant_projector, dsimp, rw linear_map.map_smul, c
   { intros, use b * g1⁻¹, simp }
 end
 
---variables { : submodule R M}
-  --{K : Type v} [field K] {V : Type w} [add_comm_group V] [vector_space K V]
-
 lemma submodule_comap_smul (f : M →ₗ[R] M) (p : submodule R M) (r : R) (h : is_unit r) :
   p.comap (r • f) = p.comap f :=
 begin
   let ur :=  (classical.some h),
-  ext b; simp only [submodule.mem_comap, p.smul_mem_iff' ur, linear_map.smul_apply], sorry,
+  have : r = (ur : R) := classical.some_spec h, 
+  ext b; simp only [submodule.mem_comap, linear_map.smul_apply, this, p.smul_mem_iff' ur], 
 end
 
 lemma submodule_map_smul (f : M →ₗ[R] M) (p : submodule R M) (r : R) (h : is_unit r) :
@@ -303,18 +301,20 @@ le_antisymm
   begin rw [map_le_iff_le_comap, ← submodule_comap_smul f _ r h, ← map_le_iff_le_comap], exact le_refl _ end
 
 lemma range_smul (f : M →ₗ[R] M) (r : R) (h : is_unit r) : range (r • f) = range f :=
-begin submodule_map_smul f _ r h
+begin exact submodule_map_smul f _ r h
 end
 
 lemma range_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M) 
-  (π : M →ₗ[R] M) (hR : (range π).invariant_under ρ) : 
+  (π : M →ₗ[R] M) (hp : is_projection π) (hR : (range π).invariant_under ρ) : 
   range (invariant_projector hG ρ π) = range π :=
 begin  unfold invariant_projector, 
-  let invr :=  (is_unit_iff_exists_inv.1 hG),
-  rw [range_smul _  (classical.some invr)],
-  have foo := invariant_multiple_of_projector_is_scalar_on (fintype.card G : R) ρ π _ _ _,
-  { sorry }, 
- sorry
+  let invr :=  classical.some(is_unit_iff_exists_inv.1 hG),
+  rw [range_smul _ invr],
+  ext x, split,
+  { rintro ⟨x,hx,rfl⟩, dunfold invariant_multiple_of_projector, rw sum_apply, apply sum_mem, intros, dsimp, apply hR, rw mem_range, exact ⟨_, rfl⟩ },
+  { rintro ⟨x,hx,rfl⟩, use invr • π x, use trivial, dunfold invariant_multiple_of_projector, rw sum_apply,
+    convert finset.sum_const (invr • π x), ext g, dsimp, { sorry }, rw finset.card_univ, 
+    convert mul_smul _ _ _, swap, apply semimodule.smul_eq_smul,  rw classical.some_spec (is_unit_iff_exists_inv.1 hG), rw one_smul }
 end
 
 
@@ -332,7 +332,7 @@ begin
   let π := invariant_projector hG ρ h.pr1, use ker π,
   use is_invariant_ker (is_equivariant_invariant_projector hG ρ h.pr1),
   suffices hR : (range (complementary.pr1 h)).invariant_under ρ,
-  rw [complementary.comm, ← h.range_pr1, ← range_invariant_projector hG ρ h.pr1 hR],
+  rw [complementary.comm, ← h.range_pr1, ← range_invariant_projector hG ρ h.pr1 h.pr1_pr1 hR],
   convert complementary_ker_range ((is_projection_invariant_projector hG ρ h.pr1) hR),
   rw complementary.range_pr1, exact hN
 end

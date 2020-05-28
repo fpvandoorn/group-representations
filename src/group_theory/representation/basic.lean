@@ -286,8 +286,25 @@ begin intros g1 x, dunfold invariant_projector, dsimp, rw linear_map.map_smul, c
   { intros, use b * g1⁻¹, simp }
 end
 
+--variables { : submodule R M}
+  --{K : Type v} [field K] {V : Type w} [add_comm_group V] [vector_space K V]
+
+lemma submodule_comap_smul (f : M →ₗ[R] M) (p : submodule R M) (r : R) (h : is_unit r) :
+  p.comap (r • f) = p.comap f :=
+begin
+  let ur :=  (classical.some h),
+  ext b; simp only [submodule.mem_comap, p.smul_mem_iff' ur, linear_map.smul_apply], sorry,
+end
+
+lemma submodule_map_smul (f : M →ₗ[R] M) (p : submodule R M) (r : R) (h : is_unit r) :
+  p.map (r • f) = p.map f :=
+le_antisymm
+  begin rw [map_le_iff_le_comap, submodule_comap_smul f _ r h, ← map_le_iff_le_comap], exact le_refl _ end
+  begin rw [map_le_iff_le_comap, ← submodule_comap_smul f _ r h, ← map_le_iff_le_comap], exact le_refl _ end
+
 lemma range_smul (f : M →ₗ[R] M) (r : R) (h : is_unit r) : range (r • f) = range f :=
-sorry
+begin submodule_map_smul f _ r h
+end
 
 lemma range_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M) 
   (π : M →ₗ[R] M) (hR : (range π).invariant_under ρ) : 

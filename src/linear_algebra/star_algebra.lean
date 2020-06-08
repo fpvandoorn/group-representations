@@ -6,9 +6,9 @@ variables {R : Type*}
 set_option default_priority 50
 -- class banach_algebra (A : Type*) [normed_ring A] [complete_space A] extends normed_algebra 𝕜 A
 
+/-- Auxilliary class stating that `α` has a star-operation, a postfix operation `∗`, which can be typed using `\ast`. -/
 class has_star (α : Type*) :=
   (star : α → α)
-
 
 postfix `∗`:(max+10) := has_star.star -- type ∗ using \ast
 
@@ -126,6 +126,7 @@ variables [c_star_ring R] {x y z : R}
 lemma norm_mul_norm_le_norm_star_mul (x : R) : norm x * norm x ≤ norm (x∗ * x) :=
 c_star_ring.norm_mul_norm_le_norm_star_mul x
 
+/-- Every C*-ring is a *-ring. -/
 def c_star_ring.to_star_ring : star_ring R := { .._inst_1 }
 
 local attribute [instance, priority 10] c_star_ring.to_star_ring

@@ -1,4 +1,21 @@
+/-
+
+C* algebras and related concepts.
+
+Classes defined here:
+  star_ring R - has an involution * or ∗
+  comm_star_ring R - for example, complex.comm_star_ring
+  normed_star_ring R - normed_ring with the norm_star property, norm (x∗) = norm x
+  c_star_ring R - normed_ring with the norm_mul_norm_le_norm_star_mul property, norm x * norm x ≤ norm (x∗ * x)
+    This implies equality (norm_star_mul) as well as norm_star.
+  star_algebra R A - analogous to algebra R A
+  normed_star_algebra [R] A - a star_algebra which is also a normed_star_ring
+  star_banach_algebra [R] A - like normed_star_algebra and a complete_space
+  c_star_algebra [R] A - a star_algebra which is also a c_star_ring and a complete_space
+-/
+
 import analysis.normed_space.basic
+import algebra.invertible algebra.group.units
 
 -- variables (𝕜 : Type*) [normed_field 𝕜]
 variables {R : Type*}
@@ -187,9 +204,20 @@ end normed_star_algebra
 section star_banach_algebra
 
 /- The following hypotheses state `A` is an star Banach algebra or involutive Banach algebra over `R` -/
+
 variables [comm_star_ring R] (A : Type*) [normed_star_ring A] [complete_space A] [star_algebra R A]
+variables (a b : A) (x : R)
 
 /- TODO: lemmas -/
+
+def spectrum (a : A) := { x | ¬ is_unit ( x • 1 - a ) } 
+
+#check (a * b) 
+#check { x : R | ¬ is_unit ( x • 1 - a ) } 
+#check spectrum a
+#check spectrum (a * b) 
+
+lemma spectrum_comm (a b : A) : spectrum (a * b) = spectrum (b * a) := sorry 
 
 end star_banach_algebra
 

@@ -206,11 +206,11 @@ section star_banach_algebra
 /- The following hypotheses state `A` is an star Banach algebra or involutive Banach algebra over `R` -/
 
 variables [comm_star_ring R] (A : Type*) [normed_star_ring A] [complete_space A] [star_algebra R A]
-variables (a b : A) (x : R)
+variables (a b : A) 
 
 /- TODO: lemmas -/
 
-def spectrum (a : A) := { x | ¬ is_unit ( x • 1 - a ) } 
+def spectrum (a : A)  : set R := { x : R | ¬ is_unit ( x • 1 - a ) } 
 
 #check (a * b) 
 #check { x : R | ¬ is_unit ( x • 1 - a ) } 

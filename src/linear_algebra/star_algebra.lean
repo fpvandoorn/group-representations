@@ -186,7 +186,7 @@ section star_algebra
 class star_algebra (R : Type*) [comm_star_ring R] (A : Type*) [star_ring A] extends algebra R A :=
   (smul_star : ∀ r : R, ∀ x : A, (r • x)∗ = r∗ • x∗)
 
-variables [comm_star_ring R] (A : Type*) [star_ring A] [star_algebra R A]
+variables [comm_star_ring R] {A : Type*} [star_ring A] [star_algebra R A]
 
 /- TODO: lemmas -/
 
@@ -195,7 +195,7 @@ end star_algebra
 section normed_star_algebra
 
 /- The following hypotheses state `A` is an normed star algebra or normed involutive algebra over `R` -/
-variables [comm_star_ring R] (A : Type*) [normed_star_ring A] [star_algebra R A]
+variables [comm_star_ring R] {A : Type*} [normed_star_ring A] [star_algebra R A]
 
 /- TODO: lemmas -/
 
@@ -205,19 +205,19 @@ section star_banach_algebra
 
 /- The following hypotheses state `A` is an star Banach algebra or involutive Banach algebra over `R` -/
 
-variables [comm_star_ring R] (A : Type*) [normed_star_ring A] [complete_space A] [star_algebra R A]
-variables (a b : A) 
+variables [comm_star_ring R] {A : Type*} [normed_star_ring A] [complete_space A] [star_algebra R A]
+variables (a b : A)
+variable (R)
 
-/- TODO: lemmas -/
+def spectrum (a : A) : set R := { x : R | ¬ is_unit ( x • 1 - a ) }
 
-def spectrum (a : A)  : set R := { x : R | ¬ is_unit ( x • 1 - a ) } 
+#check (a * b)
+#check { x : R | ¬ is_unit ( x • 1 - a ) }
+#check spectrum R a
+#check spectrum R (a * b)
 
-#check (a * b) 
-#check { x : R | ¬ is_unit ( x • 1 - a ) } 
-#check spectrum a
-#check spectrum (a * b) 
-
-lemma spectrum_comm (a b : A) : spectrum (a * b) = spectrum (b * a) := sorry 
+variable {R}
+lemma spectrum_comm (a b : A) : spectrum R (a * b) = spectrum R (b * a) := sorry
 
 end star_banach_algebra
 
@@ -225,7 +225,7 @@ end star_banach_algebra
 section c_star_algebra
 
 /-The following hypotheses state that `A` is a C*-algebra over `R` -/
-variables [comm_star_ring R] (A : Type*) [c_star_ring A] [complete_space A] [star_algebra R A]
+variables [comm_star_ring R] {A : Type*} [c_star_ring A] [complete_space A] [star_algebra R A]
 
 /- TODO: lemmas -/
 

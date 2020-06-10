@@ -216,12 +216,25 @@ def non_zero_spectrum (a : A) : set R := { x : R | x≠0 ∧ ¬ is_unit ( x • 
 
 open_locale classical
 
+lemma reorder_resolvent (a b : A) [h : invertible (1-a*b)] : invertible (1-b*a) :=
+begin
+  have h1 : h.inv_of - a*b*h.inv_of = 1 := by sorry, 
+  apply_fun (λ x, 1 - b*a + b*x*a) at h1,
+  simp at h1,
+  have h2 : h.inv_of - h.inv_of*a*b = 1 := by sorry, 
+  apply_fun (λ x, 1 - b*a + b*x*a) at h2,
+  simp at h2,
+  exact ⟨1+b*h.inv_of*a, by simp *, by simp *⟩ 
+ end
+
 variable {R}
 lemma spectrum_comm (a b : A) : non_zero_spectrum R (a * b) = non_zero_spectrum R (b * a) := 
 begin unfold non_zero_spectrum, ext, simp, 
   by_cases x=0, repeat {simp [h]},
+  have inv_x : invertible x := by sorry,--apply invertible_of_nonzero h, 
   rw [ ← not_iff_not_of_iff], split,
   { intro, apply is_unit_of_invertible _, 
+    apply invertible_mul x (1 - ⅟x * a * b), exact inv_x, 
     },
 end
 

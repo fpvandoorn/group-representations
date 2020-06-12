@@ -1,8 +1,8 @@
 [package]
 name = "group-representations"
 version = "0.1"
-lean_version = "leanprover-community/lean:3.9.0"
+lean_version = "leanprover-community/lean:3.16.2"
 path = "src"
 
 [dependencies]
-mathlib = {git = "https://github.com/leanprover-community/mathlib", rev = "ae06db33b352e41bdd7afcaee5cde3679f234bd2"}
+mathlib = {git = "https://github.com/leanprover-community/mathlib", rev = "51ad2a1867bdf25ae61b432c8105ec9da4cc93f1"}

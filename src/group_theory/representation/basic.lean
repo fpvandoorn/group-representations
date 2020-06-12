@@ -62,7 +62,7 @@ protected noncomputable def linear_equiv (h : complementary N N') :
   (N × N') ≃ₗ[R] M := -- default precendences are wrong
 begin
   apply linear_equiv.of_bijective (N.subtype.coprod N'.subtype),
-  { rw [eq_bot_iff'], rintro ⟨⟨x, hx⟩, ⟨x', hx'⟩⟩ hxx',
+  { refine (eq_bot_iff' _).mpr _, rintro ⟨⟨x, hx⟩, ⟨x', hx'⟩⟩ hxx',
     simp only [mem_ker, subtype_apply, submodule.coe_mk, coprod_apply] at hxx',
     have : x = 0,
     { apply disjoint_def.mp h.2 x hx,
@@ -279,7 +279,7 @@ end
 
 lemma is_equivariant_invariant_projector [fintype G] (hG : is_unit (fintype.card G : R)) (ρ : group_representation G R M)
   (π : M →ₗ[R] M) : is_equivariant ρ (invariant_projector hG ρ π) :=
-begin intros g1 x, dunfold invariant_projector, dsimp, rw linear_map.map_smul, congr,
+begin intros g1 x, dunfold invariant_projector, dsimp, rw linear_map.map_smul, congr' 1,
   dunfold invariant_multiple_of_projector, simp [sum_apply],
   apply finset.sum_bij (λ g _, g * g1),
   { intros, apply finset.mem_univ },
@@ -295,7 +295,7 @@ lemma submodule_comap_smul (f : M →ₗ[R] M) (p : submodule R M) (r : R) (h : 
   p.comap (r • f) = p.comap f :=
 begin
   let ur :=  (classical.some h),
-  have : r = (ur : R) := classical.some_spec h,
+  have : r = (ur : R) := (classical.some_spec h).symm,
   ext b; simp only [submodule.mem_comap, linear_map.smul_apply, this, p.smul_mem_iff' ur],
 end
 

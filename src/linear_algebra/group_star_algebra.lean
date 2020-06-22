@@ -68,16 +68,40 @@ section
 variables [normed_star_ring k] [second_countable_topology k] [measurable_space k] [borel_space k] [opens_measurable_space k] [group G] [measure_space G]
 variables [complete_space k] 
 
-lemma check_count (s : set G) (sf : fintype s) (hs : is_measurable s) : ( coe ( fintype.card s ) = measure.count s) := 
-begin 
-  unfold measure.count, dunfold measure.sum, unfold outer_measure.to_measure, dsimp, sorry
-  -- rw (measure.dirac_apply _) hs, rw [ outer_measure.sum_apply], dunfold measure.dirac, 
+lemma measure_insert (μ : measure G) (s : set G) (g : G) (hs: g ∉ s) : μ (insert g s) = μ s + μ {g} :=
+begin
 end
+
+lemma measure_sum {ι : Type*} {α : Type*} [measurable_space α] (f : ι → measure α) (s : set α) : 
+  (measure.sum f) s = ∑' i, f i s :=
+begin
+end
+
+lemma dirac_simp {α : Type*} [measurable_space α] (x g : α) : ite (x = g) 1 0 = (measure.dirac x) {g} := sorry
+
+lemma check_count (s : finset G) : ( ↑ s.card = measure.count (↑s : set G)) := 
+begin 
+  unfold measure.count, apply finset.induction_on s, simp,
+  intros g s' hs heq, 
+  simp only [*, coe_insert, card_insert_of_not_mem, nat.cast_add, not_false_iff, nat.cast_one],
+  rw measure_insert, congr, rw measure_sum, 
+  have hh : (∑' i, ite (i=g) (1:ennreal) 0) = ∑' i : G, (measure.dirac i) {g} , 
+    { congr, ext1, apply dirac_simp },
+  rw [← hh,tsum_ite_eq], trivial,
+ end
+
 
 lemma hn : normed_space ℝ k := begin sorry end
 
-lemma right_invariant_measure (f : G →₁ k) (a : G) (hn : normed_space ℝ k) : ∫ x : G, f.to_fun x = ∫ x : G, f.to_fun (x*a) := 
-begin sorry
+def right_invariant_measure2 (f : G →₁ k) (a : G) (hn : normed_space ℝ k) : Prop := 
+  (∫ x : G, f.to_fun x) = ∫ x : G, f.to_fun (x*a)
+
+def right_invariant_measure (μ : measure G)  : Prop := ∀ g : G, ∀ s : set G, is_measurable s → μ s = μ ((λ h,h*g)⁻¹' s) 
+  
+
+lemma discrete_measure_is_right_invariant
+--  (f : G →₁ k) (a : G) (hn : normed_space ℝ k) : (∫ x : G, f.to_fun x) = ∫ x : G, f.to_fun (x*a) := 
+begin 
 end
 
 -- @[derive [star_algebra]]

@@ -68,13 +68,18 @@ section
 variables [normed_star_ring k] [second_countable_topology k] [measurable_space k] [borel_space k] [opens_measurable_space k] [group G] [measure_space G]
 variables [complete_space k] 
 
-lemma measure_insert (μ : measure G) (s : set G) (g : G) (hs: g ∉ s) : μ (insert g s) = μ s + μ {g} :=
-begin
+lemma measure_insert (μ : measure G) (s : set G) (hs : is_measurable s) (g : G) (hg: g ∉ s) : μ (insert g s) = μ s + μ {g} :=
+begin 
+  have h1 : is_measurable ({g} : set G) := sorry,
+  have hh : disjoint s {g} := begin unfold disjoint, simp*, sorry end,
+  have hz : ((insert g s) = (s ∪ {g})) := sorry,
+  rw hz,
+  apply measure_union hh hs h1, 
 end
 
 lemma measure_sum {ι : Type*} {α : Type*} [measurable_space α] (f : ι → measure α) (s : set α) : 
   (measure.sum f) s = ∑' i, f i s :=
-begin
+begin unfold measure.sum, unfold outer_measure.sum, simp, 
 end
 
 lemma dirac_simp {α : Type*} [measurable_space α] (x g : α) : ite (x = g) 1 0 = (measure.dirac x) {g} := sorry
@@ -87,7 +92,7 @@ begin
   rw measure_insert, congr, rw measure_sum, 
   have hh : (∑' i, ite (i=g) (1:ennreal) 0) = ∑' i : G, (measure.dirac i) {g} , 
     { congr, ext1, apply dirac_simp },
-  rw [← hh,tsum_ite_eq], trivial,
+  rw [← hh,tsum_ite_eq], sorry,
  end
 
 

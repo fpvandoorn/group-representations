@@ -34,7 +34,13 @@ open set filter topological_space ennreal emetric measure_theory
 open finset finsupp
 
 universes u₁ u₂ u₃
-variables (k : Type u₁) (G : Type u₂) [group G] 
+variables (k : Type u₁) (G : Type u₂) 
+
+class discrete_group2 (G : Type u₂) extends group G
+
+instance discrete_group2.measurable_space [discrete_group2 G] : measurable_space G := ⊤
+
+instance discrete_group2.measure_space [discrete_group2 G] : measure_space G := ⟨ measure.count ⟩ 
 
 def discrete_group (G : Type u₂) : Type u₂ := G
 
@@ -53,43 +59,39 @@ variables a b : generator
 
 def zgroup := discrete_group (free_abelian_group generator)
 
-def zgroup2 := (free_abelian_group generator)
-instance : measurable_space zgroup2 := ⊤
-instance : measure_space zgroup2 := ⟨  measure.count ⟩ 
+def zgroup2 : discrete_group2 (multiplicative (free_abelian_group generator)) := { }
 
 #print zgroup2.measurable_space
 
 def gx := free_abelian_group.of generator.x
 
-def s1 := { g : zgroup2 | g = gx }
+--def s1 := { g : zgroup2 | g = gx }
 
 section
 -- normed_group should be inferable from normed_star_ring 
-variables [normed_star_ring k] [second_countable_topology k] [measurable_space k] [borel_space k] [opens_measurable_space k] [group G] [measure_space G]
+variables [normed_star_ring k] [second_countable_topology k] [measurable_space k] [borel_space k] [opens_measurable_space k] 
 variables [complete_space k] 
 
-lemma measure_insert (μ : measure G) [discrete_group G] (s : set G) (hs : is_measurable s) (g : G) (hg: g ∉ s) : μ (insert g s) = μ s + μ {g} :=
+lemma measure_insert [discrete_group2 G] (μ : measure G) (s : set G) (hs : is_measurable s) (g : G) (hg: g ∉ s) : μ (insert g s) = μ s + μ {g} :=
 begin 
-  have h1 : is_measurable ({g} : set G) := sorry, -- G.is_measurable {g}, sorry,
+  have h1 : is_measurable ({g} : set G) := trivial,
   have hh : disjoint s {g} := by simp [set.disjoint_right,hg],
   have hz : ((insert g s) = (s ∪ {g})) := by simp,
   rw hz,
   apply measure_union hh hs h1, 
 end
 
-lemma measure_sum {ι : Type*} {α : Type*} [measurable_space α] (f : ι → measure α) (s : set α) : 
-  (measure.sum f) s = ∑' i, f i s :=
-begin unfold measure.sum, 
-  let f' : ι → outer_measure α := λ (i : ι), (f i).to_outer_measure,
-  let foo := (outer_measure.sum f' s),
-  have hh := outer_measure.sum_apply f' s,
-  rw hh at foo,
---unfold outer_measure.sum, simp, 
+@[simp]
+lemma measure_sum {ι : Type*} {α : Type*} [measurable_space α] (f : ι → measure α) (s : set α) (hs : is_measurable s): 
+  (measure.sum f) s = ∑' i, f i s := 
+  by simp only [hs, measure.sum, to_measure_apply, outer_measure.sum_apply, to_outer_measure_apply]
+
+lemma dirac_simp {α : Type*} [discrete_group2 α] (x g : α) : ite (x = g) 1 0 = (measure.dirac x) {g} := 
+begin  have h1 : is_measurable ({g} : set α) := trivial,
+ simp [h1], by_cases x = g, simp [h], simp [h],
 end
 
-lemma dirac_simp {α : Type*} [measurable_space α] (x g : α) : ite (x = g) 1 0 = (measure.dirac x) {g} := sorry
-
-lemma check_count [discrete_group G] [group G] (s : finset G) : ( ↑ s.card = measure.count (↑s : set G)) := 
+lemma check_count [discrete_group2 G] (s : finset G) : ( ↑ s.card = measure.count (↑s : set G)) := 
 begin 
   unfold measure.count, apply finset.induction_on s, simp,
   intros g s' hs heq, 
@@ -97,21 +99,26 @@ begin
   rw measure_insert _ _ ↑ s' , congr, rw measure_sum, 
   have hh : (∑' i, ite (i=g) (1:ennreal) 0) = ∑' i : G, (measure.dirac i) {g} , 
     { congr, ext1, apply dirac_simp },
-  rw [← hh,tsum_ite_eq], {sorry}, trivial, repeat { exact _inst_11 }, exact _inst_10,
- end
-
+  rw [← hh,tsum_ite_eq], repeat {trivial},
+end
 
 lemma hn : normed_space ℝ k := begin sorry end
 
-def right_invariant_measure2 (f : G →₁ k) (a : G) (hn : normed_space ℝ k) : Prop := 
+def right_invariant_measure2 [discrete_group2 G] (f : G →₁ k) (a : G) (hn : normed_space ℝ k) : Prop := 
   (∫ x : G, f.to_fun x) = ∫ x : G, f.to_fun (x*a)
 
-def right_invariant_measure (μ : measure G)  : Prop := ∀ g : G, ∀ s : set G, is_measurable s → μ s = μ ((λ h,h*g)⁻¹' s) 
+variable {G}
+
+def right_invariant_measure [discrete_group2 G] (μ : measure G) : Prop :=
+   ∀ g : G, ∀ s : set G, μ s = μ ((λ h,h*g)⁻¹' s) 
   
 
-lemma discrete_measure_is_right_invariant
---  (f : G →₁ k) (a : G) (hn : normed_space ℝ k) : (∫ x : G, f.to_fun x) = ∫ x : G, f.to_fun (x*a) := 
-begin 
+lemma discrete_measure_is_right_invariant [discrete_group2 G] : right_invariant_measure (measure.count : measure G) :=
+begin unfold right_invariant_measure, unfold measure.count, intros, 
+   have hs : is_measurable s := trivial,
+  let s' := ((λ (h : G), h * g) ⁻¹' s),
+  have hs' : is_measurable s' := trivial,
+ simp [hs,hs'], symmetry, exact @@tsum_equiv _ _ _ (λ i, ⨆(h : i ∈ s), (1 : ennreal)) (equiv.mul_right g),
 end
 
 -- @[derive [star_algebra]]

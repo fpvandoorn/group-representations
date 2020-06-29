@@ -34,7 +34,7 @@ open set filter topological_space ennreal emetric measure_theory
 open finset finsupp
 
 universes u₁ u₂ u₃
-variables (k : Type u₁) (G : Type u₂)
+variables (k : Type u₁) (G : Type u₂) [group G] 
 
 def discrete_group (G : Type u₂) : Type u₂ := G
 
@@ -55,7 +55,7 @@ def zgroup := discrete_group (free_abelian_group generator)
 
 def zgroup2 := (free_abelian_group generator)
 instance : measurable_space zgroup2 := ⊤
-instance : measure_space zgroup2 := _ -- ⟨  measure.count ⟩ 
+instance : measure_space zgroup2 := ⟨  measure.count ⟩ 
 
 #print zgroup2.measurable_space
 
@@ -68,31 +68,36 @@ section
 variables [normed_star_ring k] [second_countable_topology k] [measurable_space k] [borel_space k] [opens_measurable_space k] [group G] [measure_space G]
 variables [complete_space k] 
 
-lemma measure_insert (μ : measure G) (s : set G) (hs : is_measurable s) (g : G) (hg: g ∉ s) : μ (insert g s) = μ s + μ {g} :=
+lemma measure_insert (μ : measure G) [discrete_group G] (s : set G) (hs : is_measurable s) (g : G) (hg: g ∉ s) : μ (insert g s) = μ s + μ {g} :=
 begin 
-  have h1 : is_measurable ({g} : set G) := sorry,
-  have hh : disjoint s {g} := begin unfold disjoint, simp*, sorry end,
-  have hz : ((insert g s) = (s ∪ {g})) := sorry,
+  have h1 : is_measurable ({g} : set G) := sorry, -- G.is_measurable {g}, sorry,
+  have hh : disjoint s {g} := by simp [set.disjoint_right,hg],
+  have hz : ((insert g s) = (s ∪ {g})) := by simp,
   rw hz,
   apply measure_union hh hs h1, 
 end
 
 lemma measure_sum {ι : Type*} {α : Type*} [measurable_space α] (f : ι → measure α) (s : set α) : 
   (measure.sum f) s = ∑' i, f i s :=
-begin unfold measure.sum, unfold outer_measure.sum, simp, 
+begin unfold measure.sum, 
+  let f' : ι → outer_measure α := λ (i : ι), (f i).to_outer_measure,
+  let foo := (outer_measure.sum f' s),
+  have hh := outer_measure.sum_apply f' s,
+  rw hh at foo,
+--unfold outer_measure.sum, simp, 
 end
 
 lemma dirac_simp {α : Type*} [measurable_space α] (x g : α) : ite (x = g) 1 0 = (measure.dirac x) {g} := sorry
 
-lemma check_count (s : finset G) : ( ↑ s.card = measure.count (↑s : set G)) := 
+lemma check_count [discrete_group G] [group G] (s : finset G) : ( ↑ s.card = measure.count (↑s : set G)) := 
 begin 
   unfold measure.count, apply finset.induction_on s, simp,
   intros g s' hs heq, 
   simp only [*, coe_insert, card_insert_of_not_mem, nat.cast_add, not_false_iff, nat.cast_one],
-  rw measure_insert, congr, rw measure_sum, 
+  rw measure_insert _ _ ↑ s' , congr, rw measure_sum, 
   have hh : (∑' i, ite (i=g) (1:ennreal) 0) = ∑' i : G, (measure.dirac i) {g} , 
     { congr, ext1, apply dirac_simp },
-  rw [← hh,tsum_ite_eq], sorry,
+  rw [← hh,tsum_ite_eq], {sorry}, trivial, repeat { exact _inst_11 }, exact _inst_10,
  end
 
 
